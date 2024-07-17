@@ -35,37 +35,37 @@ get_stock_data_df <- function(API_Key){
   DOW_Symbol_list <- fromJSON(DOW_Symbol_list)
   
   # Convert JSON data into data frames
-  Symbol_df <- as.data.frame(Symbol_List)
-  Financial_Statement_Symbol_df <- as.data.frame(Financial_Statement_Symbol_List)
-  SP500_Symbol_df <- as.data.frame(SP500_Symbol_list)
-  NASDAQ_Symbol_df <- as.data.frame(NASDAQ_Symbol_list)
-  DOW_Symbol_df <- as.data.frame(DOW_Symbol_list)
+  symbol_df <- as.data.frame(Symbol_List)
+  Financial_Statement_symbol_df <- as.data.frame(Financial_Statement_Symbol_List)
+  SP500_symbol_df <- as.data.frame(SP500_Symbol_list)
+  NASDAQ_symbol_df <- as.data.frame(NASDAQ_Symbol_list)
+  DOW_symbol_df <- as.data.frame(DOW_Symbol_list)
   
   # Add a column to mark only stocks with financial statements
-  Financial_Statement_Symbol_df <- Financial_Statement_Symbol_df %>% 
+  Financial_Statement_symbol_df <- Financial_Statement_symbol_df %>% 
     mutate(Financial_statements = 'TRUE') %>% 
     rename(symbol = Financial_Statement_Symbol_List)
   
   # Add a column to mark only the S&P500, NASDAQ and Dow Jones stocks
-  SP500_Symbol_df <- SP500_Symbol_df %>% 
+  SP500_symbol_df <- SP500_symbol_df %>% 
     mutate(SP500 = 'S&P500') %>% 
     select(-name, -dateFirstAdded)
   
-  NASDAQ_Symbol_df <- NASDAQ_Symbol_df %>% 
+  NASDAQ_symbol_df <- NASDAQ_symbol_df %>% 
     mutate(NASDAQ = 'NASDAQ') %>% 
     select(-c("name","dateFirstAdded", "sector","subSector","headQuarter","cik", "founded"))
   
-  DOW_Symbol_df <- DOW_Symbol_df %>% 
+  DOW_symbol_df <- DOW_symbol_df %>% 
     mutate(Dow_Jones = 'DOW') %>% 
     select(-c("name","dateFirstAdded", "sector","subSector","headQuarter","cik", "founded"))
   
   # Merge stock data with financial statement symbol list and key indexes
-  Symbol_df  <- semi_join(Symbol_df , Financial_Statement_Symbol_df, by = "symbol")
-  Symbol_df  <- left_join(Symbol_df , SP500_Symbol_df, by = "symbol")
-  Symbol_df  <- left_join(Symbol_df , NASDAQ_Symbol_df, by = "symbol" )
-  Symbol_df  <- left_join(Symbol_df , DOW_Symbol_df, by = "symbol")
+  symbol_df  <- semi_join(symbol_df , Financial_Statement_symbol_df, by = "symbol")
+  symbol_df  <- left_join(symbol_df , SP500_symbol_df, by = "symbol")
+  symbol_df  <- left_join(symbol_df , NASDAQ_symbol_df, by = "symbol" )
+  symbol_df  <- left_join(symbol_df , DOW_symbol_df, by = "symbol")
   
-  return(Symbol_df)
+  return(symbol_df)
 }
 
 get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
@@ -108,7 +108,7 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
   )
   
   # Function to retrieve all statements, key metrics, profile and ratios from symbols_df
-  fetch_data <- function(paths, type) {
+  fetch_fundamentals_data <- function(paths, type) {
     bind_rows(lapply(1:length(paths), function(x) {
       pb$tick()
       tryCatch({
@@ -132,24 +132,143 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
     }))
   }
   
-  IS <- fetch_data(API_IncomeStatement_path, "Income Statement")
-  BS <- fetch_data(API_BalanceSheet_path, "Balance Sheet")
-  CF <- fetch_data(API_CashFlow_path, "Cash Flow")
-  KeyMetrics <- fetch_data(API_KeyMetrics_path, "Key Metrics")
-  Profile <- fetch_data(API_Profile_path, "Profile data")
-  Ratios <- fetch_data(API_Ratio_path, "Ratios")
+  IS <- fetch_fundamentals_data(API_IncomeStatement_path, "Income Statement")
+  BS <- fetch_fundamentals_data(API_BalanceSheet_path, "Balance Sheet")
+  CF <- fetch_fundamentals_data(API_CashFlow_path, "Cash Flow")
+  KeyMetrics <- fetch_fundamentals_data(API_KeyMetrics_path, "Key Metrics")
+  Profile <- fetch_fundamentals_data(API_Profile_path, "Profile data")
+  Ratios <- fetch_fundamentals_data(API_Ratio_path, "Ratios")
   
-    # Combine all data into a dataframe or a single data frame, depending on your needs
-  symbols_df1 <- left_join(symbols_df, fundamentals_df$IS) 
-  symbols_df1 <- left_join(symbols_df1, fundamentals_df$BS)
-  symbols_df1 <- left_join(symbols_df1, fundamentals_df$CF)
-  symbols_df1 <- left_join(symbols_df1, fundamentals_df$KeyMetrics)
-  symbols_df1 <- left_join(symbols_df1, fundamentals_df$Profile)
-  symbols_df1 <- left_join(symbols_df1, fundamentals_df$Ratios)
+  # Formatting data
+  IS <- IS %>% 
+    mutate(across(c(date,fillingDate,acceptedDate), as.Date)) %>% 
+    mutate_at(vars(calendarYear), as.integer)
+  
+  BS <- BS %>% 
+    mutate(across(c(date,fillingDate,acceptedDate), as.Date)) %>% 
+    mutate_at(vars(calendarYear), as.integer)
+  
+  CF <- CF %>% 
+    mutate(across(c(date,fillingDate,acceptedDate), as.Date)) %>% 
+    mutate_at(vars(calendarYear), as.integer)
+  
+  Ratios <- Ratios %>% 
+    mutate_at(vars(date), as.Date) %>% 
+    mutate_at(vars(calendarYear), as.integer)
+  
+  KeyMetrics <- KeyMetrics %>% 
+    mutate_at(vars(date), as.Date) %>% 
+    mutate_at(vars(calendarYear), as.integer)
+  
+  # Combine all data into a dataframe or a single data frame, depending on your needs
+  symbols_df <- left_join(symbols_df, IS) %>% select(-price)
+  symbols_df <- left_join(symbols_df, BS) 
+  symbols_df <- left_join(symbols_df, CF) 
+  symbols_df <- left_join(symbols_df, KeyMetrics) 
+  symbols_df <- left_join(symbols_df, Profile) 
+  symbols_df <- left_join(symbols_df, Ratios) 
+  
+  return(symbols_df)
 }
-  
-   
 
-get_price_history_data <- function(symbol, API_Key){
+get_financial_statement_as_reported <- function(symbols_df, period, limit, API_Key ){
+ 
+   # Create API URLs for various calls to collect Financial Statements
+  API_financial_as_reported_path_base <- 'https://financialmodelingprep.com/api/v3/financial-statement-full-as-reported/'
+  
+  if (period == "quarter") {
+    API_financial_as_reported_path_suffix <- '?period=quarter'
+  } else {
+    API_financial_as_reported_path_suffix <- '?period=annual'
+  }
+  
+  API_financial_as_reported_path <- paste0(API_financial_as_reported_path_base, symbols_df$symbol, API_financial_as_reported_path_suffix, '&limit=', limit, '&apikey=', API_Key)
+  
+  # Progress bar
+  total_symbols <- nrow(symbols_df) # Adjust the total to the number of different data
+  pb <- progress_bar$new(
+    format = "  [:bar] :percent in :elapsed",
+    total = total_symbols, 
+    width = 60
+  )
+  
+  # Function to retrieve all statements, key metrics, profile and ratios from symbols_df
+  # Error in `bind_rows()` at fmp_analysis/scripts/data_retrieval.R:197:5:
+  #   ! Can't combine `..1$entityaddresspostalzipcode` <integer> and `..2$entityaddresspostalzipcode` <character>.
+  fetch_fundamentals_as_reported <- function(paths) {
+    bind_rows(lapply(1:length(paths), function(x) { 
+      pb$tick()
+      tryCatch({
+        data <- fromJSON(paths[x])
+        if (length(data) == 0) {
+          NULL
+        } else {
+          data.frame(data)
+        }
+      }, error = function(cond) {
+        message(paste("API provided an error for", type, "Ticker:", symbols_df$symbol[x]))
+        message("Here's the original error message:")
+        message(cond)
+        return(NULL)
+      }, warning = function(cond) {
+        message(paste("API provided a warning for", type, "Ticker:", symbols_df$symbol[x]))
+        message("Here's the original warning message:")
+        message(cond)
+        return(NULL)
+      })
+    }))
+  }
+  
+  fundamentals_as_reported <- fetch_fundamentals_as_reported (API_financial_as_reported_path)
+   
+  # Formatting data
+  # IS <- IS %>% 
+  #   mutate(across(c(date,fillingDate,acceptedDate), as.Date)) %>% 
+  #   mutate_at(vars(calendarYear), as.integer)
+  
+  return(fundamentals_as_reported)
+}
+  
+get_price_history_data <- function(symbols_df, startDate, endDate , API_Key){
+  
+  # Create API URLs for various calls to collect historical price
+  API_historical_price_path_base <- 'https://financialmodelingprep.com/api/v3/historical-price-full/'
+  API_historical_price_path <- paste0(API_historical_price_path_base, symbols_df$symbol, '?from=', startDate, '&to=', endDate,  '&apikey=', API_Key)
+  
+  # Progress bar
+  total_symbols <- nrow(symbols_df) # Adjust the total to the number of different data
+  pb <- progress_bar$new(
+    format = "  [:bar] :percent in :elapsed",
+    total = total_symbols, 
+    width = 60
+  )
+  
+  # Function to retrieve all statements, key metrics, profile and ratios from symbols_df
+  fetch_historical_price_data <- function(paths) {
+    bind_rows(lapply(1:length(paths), function(x) {
+      pb$tick()
+      tryCatch({
+        data <- fromJSON(paths[x])
+        if (length(data) == 0) {
+          NULL
+        } else {
+          data.frame(data)
+        }
+      }, error = function(cond) {
+        message(paste("API provided an error for", type, "Ticker:", symbols_df$symbol[x]))
+        message("Here's the original error message:")
+        message(cond)
+        return(NULL)
+      }, warning = function(cond) {
+        message(paste("API provided a warning for", type, "Ticker:", symbols_df$symbol[x]))
+        message("Here's the original warning message:")
+        message(cond)
+        return(NULL)
+      })
+    }))
+  }
+  
+  historical_price_df <- fetch_historical_price_data(API_historical_price_path) %>% as.data.frame()
   
 }
+
