@@ -23,3 +23,10 @@ symbols_df <- symbols_df %>%
 fundamentals_df <- get_fundamentals_data_df(symbols_df, period = "quarter", 
                                             limit = 12, API_Key = API_Key)
 
+financial_statements_as_reported_list <- get_financial_statements_as_reported_list(symbols_df, period = "quarter", limit = 12, API_Key = API_Key)
+
+
+
+
+# Retrieve historical price data
+price_history_data_df <- get_price_history_data_df(symbols_df, startDate = historical_dates$date_20Y, endDate = today(), API_Key = API_Key)

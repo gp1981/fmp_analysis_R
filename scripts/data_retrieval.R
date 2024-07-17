@@ -171,65 +171,70 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
   return(symbols_df)
 }
 
-get_financial_statement_as_reported <- function(symbols_df, period, limit, API_Key ){
- 
-   # Create API URLs for various calls to collect Financial Statements
-  API_financial_as_reported_path_base <- 'https://financialmodelingprep.com/api/v3/financial-statement-full-as-reported/'
+get_financial_statements_as_reported_list <- function(symbols_df, period, limit, API_Key) {
   
-  if (period == "quarter") {
-    API_financial_as_reported_path_suffix <- '?period=quarter'
-  } else {
-    API_financial_as_reported_path_suffix <- '?period=annual'
-  }
+  # Base URL for the API
+  API_financial_as_reported_base <- 'https://financialmodelingprep.com/api/v3/financial-statement-full-as-reported/'
   
-  API_financial_as_reported_path <- paste0(API_financial_as_reported_path_base, symbols_df$symbol, API_financial_as_reported_path_suffix, '&limit=', limit, '&apikey=', API_Key)
+  # URL suffix based on the period
+  API_financial_as_reported_suffix <- ifelse(period == "quarter", '?period=quarter', '?period=annual')
+  
+  # Construct full API URLs
+  API_paths <- paste0(API_financial_as_reported_base, symbols_df$symbol, API_financial_as_reported_suffix, '&limit=', limit, '&apikey=', API_Key)
   
   # Progress bar
-  total_symbols <- nrow(symbols_df) # Adjust the total to the number of different data
-  pb <- progress_bar$new(
+  total_symbols <- nrow(symbols_df)
+  pb <- progress::progress_bar$new(
     format = "  [:bar] :percent in :elapsed",
-    total = total_symbols, 
+    total = total_symbols,
     width = 60
   )
   
-  # Function to retrieve all statements, key metrics, profile and ratios from symbols_df
-  # Error in `bind_rows()` at fmp_analysis/scripts/data_retrieval.R:197:5:
-  #   ! Can't combine `..1$entityaddresspostalzipcode` <integer> and `..2$entityaddresspostalzipcode` <character>.
+  # Function to fetch data from JSON URLs
   fetch_fundamentals_as_reported <- function(paths) {
-    bind_rows(lapply(1:length(paths), function(x) { 
+    data_list <- lapply(1:length(paths), function(i) {
       pb$tick()
       tryCatch({
-        data <- fromJSON(paths[x])
-        if (length(data) == 0) {
-          NULL
+        data <- fromJSON(paths[i])
+        if (length(data) > 0) {
+          data_frame <- data.frame(data)
+          data_frame$date <- data_frame$date %>% as.Date()
+          return(data_frame)
         } else {
-          data.frame(data)
+          return(NULL)
         }
       }, error = function(cond) {
-        message(paste("API provided an error for", type, "Ticker:", symbols_df$symbol[x]))
-        message("Here's the original error message:")
-        message(cond)
+        message(paste("API provided an error for Ticker:", symbols_df$symbol[i]))
+        message("Error message:", cond)
         return(NULL)
       }, warning = function(cond) {
-        message(paste("API provided a warning for", type, "Ticker:", symbols_df$symbol[x]))
-        message("Here's the original warning message:")
-        message(cond)
+        message(paste("API provided a warning for Ticker:", symbols_df$symbol[i]))
+        message("Warning message:", cond)
         return(NULL)
       })
-    }))
+    })
+    names(data_list) <- symbols_df$symbol
+    return(data_list)
   }
   
-  fundamentals_as_reported <- fetch_fundamentals_as_reported (API_financial_as_reported_path)
-   
-  # Formatting data
-  # IS <- IS %>% 
-  #   mutate(across(c(date,fillingDate,acceptedDate), as.Date)) %>% 
-  #   mutate_at(vars(calendarYear), as.integer)
+  # Fetch data
+  data_list <- fetch_fundamentals_as_reported(API_paths)
   
-  return(fundamentals_as_reported)
+  # Combine all data frames into a list
+  df_list <- lapply(data_list, function(df) {
+    if (!is.null(df)) {
+      return(df)
+    } else {
+      return(data.frame())
+    }
+  })
+  
+
+  # Return the list of data frames
+  return(df_list)
 }
-  
-get_price_history_data <- function(symbols_df, startDate, endDate , API_Key){
+
+get_price_history_data_df <- function(symbols_df, startDate, endDate , API_Key){
   
   # Create API URLs for various calls to collect historical price
   API_historical_price_path_base <- 'https://financialmodelingprep.com/api/v3/historical-price-full/'
@@ -272,3 +277,9 @@ get_price_history_data <- function(symbols_df, startDate, endDate , API_Key){
   
 }
 
+# 02 - Analysis  ---------------------------------------------------------------
+history_total_equity_book_value <- function(symbols_df, fundamentals_df, financial_statements_as_reported_list){
+  # calculation to include:
+  # fundamentals_df$totalStockholdersEquity
+  
+}
