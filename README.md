@@ -50,12 +50,21 @@ The folder `scripts/` includes the following files:
 
 3. **data_retrieval.R**: script to retrieve data from fmp
 
+An up-to-date description of the functions in each file is reported in the table below. 
+*Note*: the suffix of the function name indicates the type of output e.g. _df (dataframe), _list (list)
 
 | file             | Function     | Status    | Description            |
 |:-----------------|:-------------|:----------|:-----------------------|
-| data_retrieval.R | `get_data_fmp` | Completed | Retrieve data from fmp |
+| data_retrieval.R | `get_stock_data_df` | Completed | Retrieve stock list data from fmp |
+| data_retrieval.R | `get_fundamentals_data_df` | Completed | Retrieve fundamentals data from fmp |
+| data_retrieval.R | `get_financial_statements_as_reported_list` | Completed | Retrieve financial statements as reported |
+| data_retrieval.R | `get_price_history_data_df` | Completed | Retrieve the historical price data |
+| data_retrieval.R | `get_quote_data_df` | Completed | Retrieve the full quote data |
+| data_retrieval.R | `history_total_equity_book_value_df` | To Start | Calculate the Total Equity Book Value (incl. past dividends, treasury, net issuance of shares, etc.) (see issue #1)|
 | utils.R | `export_excel_data` | Completed | Export dataframe into a table in excel |
-                            
+| utils.R | `ensure_consistent_types` | Completed | Ensure columns of a dataframes nested in a list |     
+| utils.R | `search_and_retrieve_columns` | Completed | Search specific words in the heading of the dataframes nested in a list |
+| utils.R | `extract_specific_variables` | Completed | Extract specific variables from each dataframe in a list | 
 
 ## Contributing
 

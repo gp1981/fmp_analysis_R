@@ -161,13 +161,37 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
     mutate_at(vars(calendarYear), as.integer)
   
   # Combine all data into a dataframe or a single data frame, depending on your needs
-  symbols_df <- left_join(symbols_df, IS) %>% select(-price)
-  symbols_df <- left_join(symbols_df, BS) 
-  symbols_df <- left_join(symbols_df, CF) 
-  symbols_df <- left_join(symbols_df, KeyMetrics) 
-  symbols_df <- left_join(symbols_df, Profile) 
-  symbols_df <- left_join(symbols_df, Ratios) 
+  # Ensure the 'symbol' column exists and is consistent across all dataframes
+  stopifnot("symbol" %in% colnames(symbols_df))
+  stopifnot("symbol" %in% colnames(IS))
+  stopifnot("symbol" %in% colnames(BS))
+  stopifnot("symbol" %in% colnames(CF))
+  stopifnot("symbol" %in% colnames(KeyMetrics))
+  stopifnot("symbol" %in% colnames(Profile))
+  stopifnot("symbol" %in% colnames(Ratios))
   
+  # Check for NA values in the key columns
+  sum(is.na(symbols_df$symbol))
+  sum(is.na(IS$symbol))
+  sum(is.na(BS$symbol))
+  sum(is.na(CF$symbol))
+  sum(is.na(KeyMetrics$symbol))
+  sum(is.na(Profile$symbol))
+  sum(is.na(Ratios$symbol))
+  
+  # Perform joins step-by-step and inspect the results
+symbols_df <- symbols_df %>% 
+  left_join(Profile) %>%
+  left_join(IS) %>%
+  left_join(BS) %>%
+  left_join(CF) %>%
+  left_join(KeyMetrics) %>%
+  left_join(Ratios)
+
+# Calculate correct dividends
+fundamentals_df <- fundamentals_df %>% 
+  mutate(dividend_paid_calculated = (dividendYield) * (mktCap))  
+
   return(symbols_df)
 }
 
@@ -277,8 +301,52 @@ get_price_history_data_df <- function(symbols_df, startDate, endDate , API_Key){
   
 }
 
-# 02 - Analysis  ---------------------------------------------------------------
-history_total_equity_book_value <- function(symbols_df, fundamentals_df, financial_statements_as_reported_list){
+get_quote_data_df <- function(symbols_df, API_Key){
+  
+  # Create API URLs for various calls to collect full quote
+  API_quote_path_base <- 'https://financialmodelingprep.com/api/v3/quote/'
+  API_quote_path <- paste0(API_quote_path_base, symbols_df$symbol, '?apikey=', API_Key)
+  
+  # Progress bar
+  total_symbols <- nrow(symbols_df) # Adjust the total to the number of different data
+  pb <- progress_bar$new(
+    format = "  [:bar] :percent in :elapsed",
+    total = total_symbols, 
+    width = 60
+  )
+  
+  # Function to retrieve all statements, key metrics, profile and ratios from symbols_df
+  fetch_quote_data <- function(paths) {
+    bind_rows(lapply(1:length(paths), function(x) {
+      pb$tick()
+      tryCatch({
+        data <- fromJSON(paths[x])
+        if (length(data) == 0) {
+          NULL
+        } else {
+          data.frame(data)
+        }
+      }, error = function(cond) {
+        message(paste("API provided an error for", type, "Ticker:", symbols_df$symbol[x]))
+        message("Here's the original error message:")
+        message(cond)
+        return(NULL)
+      }, warning = function(cond) {
+        message(paste("API provided a warning for", type, "Ticker:", symbols_df$symbol[x]))
+        message("Here's the original warning message:")
+        message(cond)
+        return(NULL)
+      })
+    }))
+  }
+  
+  quote_df <- fetch_quote_data(API_quote_path) %>% as.data.frame()
+  
+}
+
+# 02 - Calculated variables  ---------------------------------------------------------------
+
+history_total_equity_book_value_df <- function(symbols_df, fundamentals_df, financial_statements_as_reported_list){
   # calculation to include:
   # fundamentals_df$totalStockholdersEquity
   

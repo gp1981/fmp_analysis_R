@@ -411,6 +411,9 @@ analysis</p></li>
 <li><p><strong>data_retrieval.R</strong>: script to retrieve data from
 fmp</p></li>
 </ol>
+<p>An up-to-date description of the functions in each file is reported
+in the table below. <em>Note</em>: the suffix of the function name
+indicates the type of output e.g. _df (dataframe), _list (list)</p>
 <table>
 <colgroup>
 <col width="26%" />
@@ -429,12 +432,45 @@ fmp</p></li>
 <tbody>
 <tr class="odd">
 <td align="left">data_retrieval.R</td>
-<td align="left"><code>get_data_fmp</code></td>
+<td align="left"><code>get_stock_data_df</code></td>
 <td align="left">Completed</td>
-<td align="left"># Retrieve data from fmp</td>
+<td align="left">Retrieve stock list data from fmp</td>
+</tr>
+<tr class="even">
+<td align="left">data_retrieval.R</td>
+<td align="left"><code>get_fundamentals_data_df</code></td>
+<td align="left">Completed</td>
+<td align="left">Retrieve fundamentals data from fmp</td>
+</tr>
+<tr class="odd">
+<td align="left">data_retrieval.R</td>
+<td align="left"><code>get_financial_statements_as_reported_list</code></td>
+<td align="left">Completed</td>
+<td align="left">Retrieve financial statements as reported</td>
+</tr>
+<tr class="even">
+<td align="left">data_retrieval.R</td>
+<td align="left"><code>get_price_history_data_df</code></td>
+<td align="left">Completed</td>
+<td align="left">Retrieve the historical price data</td>
+</tr>
+<tr class="odd">
+<td align="left">data_retrieval.R</td>
+<td align="left"><code>get_quote_data_df</code></td>
+<td align="left">Completed</td>
+<td align="left">Retrieve the full quote data</td>
+</tr>
+<tr class="even">
+<td align="left">data_retrieval.R</td>
+<td align="left"><code>history_total_equity_book_value_df</code></td>
+<td align="left">To Start</td>
+<td align="left">Calculate the Total Equity Book Value (incl. past
+dividends, treasury, net issuance of shares, etc.)</td>
 </tr>
 </tbody>
 </table>
+<div class="line-block">utils.R | <code>export_excel_data</code> |
+Completed | Export dataframe into a table in excel |</div>
 </div>
 <div id="contributing" class="section level2">
 <h2>Contributing</h2>

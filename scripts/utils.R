@@ -25,7 +25,7 @@ for (package in packages) {
 # Load API Key
 API_Key = rstudioapi::askForSecret("API_FMP_KEY")
 
-## Dates setting ---------------------------------------------------------------
+## Historical dates setting ---------------------------------------------------------------
 
 # Get today's date
 today_date <- as.Date(Sys.Date())
@@ -72,6 +72,80 @@ export_excel_data <- function(DF1) {
                overwrite = TRUE)
   # Check https://cran.r-project.org/web/packages/openxlsx/openxlsx.pdf
 }
+## Function to search for specific word in column names and retrieve matching columns ----
+
+# Function to ensure columns have consistent types
+ensure_consistent_types <- function(df_list) {
+  all_colnames <- unique(unlist(lapply(df_list, colnames)))
+  
+  for (i in seq_along(df_list)) {
+    for (col in all_colnames) {
+      if (!col %in% colnames(df_list[[i]])) {
+        df_list[[i]][[col]] <- NA
+      }
+    }
+    df_list[[i]] <- df_list[[i]][, all_colnames]
+  }
+  
+  return(df_list)
+}
+
+# Function to search for specific words in column names and retrieve matching columns
+search_and_retrieve_columns <- function(df_list, words) {
+  # Initialize an empty list to store the extracted data frames
+  extracted_data <- list()
+  
+  # Iterate over each data frame in the list
+  for (name in names(df_list)) {
+    df <- df_list[[name]]
+    
+    # Find columns that contain any of the specified words
+    matching_cols <- names(df)[str_detect(names(df), paste(words, collapse = "|"))]
+    
+    if (length(matching_cols) > 0) {
+      # Select the matching columns and add to the list
+      extracted_data[[name]] <- df %>% select(date, symbol, all_of(matching_cols))
+    } else {
+      # Select date and symbol, fill remaining columns with NAs
+      extracted_data[[name]] <- df %>% select(date, symbol) %>%
+        mutate(across(everything(), ~ NA_character_))
+    }
+  }
+  
+  # Ensure all dataframes have consistent column types
+  extracted_data <- ensure_consistent_types(extracted_data)
+  
+  # Combine all the extracted data frames into a single data frame
+  combined_df <- bind_rows(extracted_data, .id = "stock")
+  
+  return(combined_df)
+}
+## Extract specific variables from each data frame in a list -------------------
+extract_specific_variables <- function(df_list, variables) {
+  # Initialize an empty list to store the extracted data frames
+  extracted_data <- list()
+  
+  # Iterate over each data frame in the list
+  for (name in names(df_list)) {
+    df <- df_list[[name]]
+    
+    # Check for missing variables and add them as NA if not present
+    missing_vars <- setdiff(variables, names(df))
+    if (length(missing_vars) > 0) {
+      df[missing_vars] <- NA
+    }
+    
+    # Select the specified variables and add to the list
+    extracted_data[[name]] <- df %>% select(all_of(variables))
+  }
+  
+  # Combine all the extracted data frames into a single data frame
+  combined_df <- bind_rows(extracted_data, .id = "stock")
+  
+  return(combined_df)
+}
+
+
 
 # 03 - Files to source ---------------------------------------------------------
 source('scripts/data_retrieval.R')
