@@ -33,9 +33,8 @@ quote_data_df <- get_quote_data_df(symbols_df, API_Key = API_Key)
 financial_statements_as_reported_list <- get_financial_statements_as_reported_list(symbols_df, period = "quarter", limit = 12, API_Key = API_Key)
 
 ### 02.3.1 - Identify specific variables of filings as reported ---
-words_to_search <- c("treasury", "dividend")
+variables_of_interest_df <- search_and_retrieve_columns(financial_statements_as_reported_list, words = c("treasury", "dividend"))
 
-variables_of_interest_df <- search_and_retrieve_columns(financial_statements_as_reported_list, words_to_search)
 
 # Extract specific variables from financial_statements_as_reported
 equity_variables_to_extract <- c("date", "symbol", "treasurystockvalue", "treasurystockcommonshares",

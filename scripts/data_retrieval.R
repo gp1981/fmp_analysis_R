@@ -189,8 +189,8 @@ symbols_df <- symbols_df %>%
   left_join(Ratios)
 
 # Calculate correct dividends
-fundamentals_df <- fundamentals_df %>% 
-  mutate(dividend_paid_calculated = (dividendYield) * (mktCap))  
+symbols_df <- symbols_df %>% 
+  mutate(dividend_paid_calculated = (dividendYield) * (marketCap))  
 
   return(symbols_df)
 }
