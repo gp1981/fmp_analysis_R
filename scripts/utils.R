@@ -4,11 +4,12 @@
 # Disclaimer: The code is provided as-is and the author takes no responsibility for any issues or damages arising from its use.
 
 
-# 01 - API, Packages and libraries -------------------------------------------------
+# Packages and libraries -------------------------------------------------
 
 packages <- c("httr","jsonlite","tidyverse", "openxlsx", "lubridate","tidyquant",
               "ggthemes","ggplot2","openxlsx","dplyr","zoo","ggpubr","foreach", 
-              "progress", "ggplot2", "kableExtra", "knitr", "openxlsx", "zoo")
+              "progress", "ggplot2", "kableExtra", "knitr", "openxlsx", "zoo", 
+              "rvest")
 
 for (package in packages) {
   if (!(package %in% installed.packages())) {
@@ -19,8 +20,8 @@ for (package in packages) {
   library(package, character.only = TRUE)
 }
 
-# 02 - Utility functions -------------------------------------------------------
-## API ---------------------------------------------------------------------
+# Utility functions -------------------------------------------------------
+## API Token ---------------------------------------------------------------------
 
 # Load API Key
 API_Key = rstudioapi::askForSecret("API_FMP_KEY")
@@ -144,8 +145,5 @@ extract_specific_variables <- function(df_list, variables) {
   
   return(combined_df)
 }
-
-
-
-# 03 - Files to source ---------------------------------------------------------
+# Files to source ---------------------------------------------------------
 source('scripts/data_retrieval.R')

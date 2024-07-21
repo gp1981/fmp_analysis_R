@@ -3,8 +3,9 @@
 # Purpose: Load all libraries and files
 # Disclaimer: The code is provided as-is and the author takes no responsibility for any issues or damages arising from its use.
 
-# 01 - Get data from fmp  ------------------------------------------------------
+# 01 - Get data   --------------------------------------------------------------
 
+## 01.1 - Get data from fmp ----------------------------------------
 get_stock_data_df <- function(API_Key){
   # Prepare URL for accessing Symbol List API
   Symbol_List_API_path <- "https://financialmodelingprep.com/api/v3/stock/list?apikey="
@@ -299,6 +300,131 @@ get_price_history_data_df <- function(symbols_df, startDate, endDate , API_Key){
   
   historical_price_df <- fetch_historical_price_data(API_historical_price_path) %>% as.data.frame()
   
+}
+
+# 02 - Get data from www.magicformulainvesting.com  -----------------------------
+get_MF_data_df <- function(mktCap_limit_lower_M, mktCap_limit_upper_M, mktCap_step_M){
+
+  # 1 - Login and open session ----------------------------------------------
+  
+  # Ask for username and password
+  username <- rstudioapi::askForSecret("Import Magic Formula Data - Enter your username:")
+  password <- rstudioapi::askForSecret("Import Magic Formula Data - Enter your password:")
+  
+  # Create a session
+  session <- session("https://www.magicformulainvesting.com/Account/LogOn")
+  
+  # Submit login form
+  form <- html_form(session)[[1]]
+  filled_form <- html_form_set(form, "Email" = username, "Password" = password)
+  session <- session_submit(session, filled_form)
+  
+  # Check if login was successful
+  response <- session$response
+  if (response$status_code == 200 && session$url == "https://www.magicformulainvesting.com/Screening/StockScreening") {
+    print("Login successful!")
+  } else {
+    stop("Login failed. Please check your username and password.")
+  }
+  
+  # Reinitialize form with the session redirected to the screening page
+  form <- html_form(session)[[1]]
+  
+  # Initialize an empty data frame to store the final results
+  company_data <- data.frame()
+  
+  # Initialize progress bar
+  pb <- progress_bar$new(format = "[:bar] :percent :elapsed", 
+                         total = length(seq(mktCap_limit_lower_M, 
+                                            mktCap_limit_upper_M, 
+                                            by = mktCap_step_M)
+                         )
+  )
+  
+  # 2 - Extract data --------------------------------------------------------
+  
+  # Loop through market cap thresholds
+  for (MinimumMarketCap in seq(mktCap_limit_lower_M, mktCap_limit_upper_M, by = mktCap_step_M)) {
+    # # Increment progress bar
+    pb$tick()
+    
+    # Submit form to get top 30
+    filled_form_top30 <- html_form_set(form, "Select30" = "true", "MinimumMarketCap" = MinimumMarketCap)
+    session <- session_submit(session, filled_form_top30)
+    
+    # Extract top 30 data
+    company_data_top30 <- extract_company_data(session, MinimumMarketCap, "Top30")
+    
+    # Submit form to get top 50
+    filled_form_top50 <- html_form_set(form, "Select30" = "false", "MinimumMarketCap" = MinimumMarketCap)
+    session <- session_submit(session, filled_form_top50)
+    
+    # Extract top 50 data
+    company_data_top50 <- extract_company_data(session, MinimumMarketCap, "Top50")
+    
+    # Merge company_data_top50 into company_data_top30 preserving the records in company_data_top30
+    company_data_merged <- merge(company_data_top30, company_data_top50, by = c("Company_Name", "Ticker", "Market_Cap_Millions", "Price_From", "Most_Recent_Quarter_Data", "threshold_mktCap", "TopGreenblatt"), all = TRUE)
+    
+    company_data_merged_unique <- company_data_merged %>%
+      group_by(Company_Name) %>% 
+      arrange(TopGreenblatt) %>% 
+      distinct(Company_Name, .keep_all = TRUE) %>% 
+      ungroup()
+    
+    # Append to company_data 
+    company_data <- rbind(company_data, company_data_merged_unique)
+    
+    # Pause for 0.2 second to avoid overloading the server
+    Sys.sleep(0.2)
+  }
+  # 
+  # Filter duplicate at higher threshold market cap
+  company_data <- company_data %>%
+    group_by(Company_Name) %>%
+    arrange(threshold_mktCap) %>%
+    distinct(Company_Name, .keep_all = TRUE) %>%
+    ungroup()
+  
+  
+  # Checking the final data
+  print(company_data)
+  
+  #  3 - Formatting data -----------------------------------------------------
+  
+  # Convert Market_Cap_Millions column to numeric
+  company_data$Market_Cap_Millions <- as.numeric(company_data$Market_Cap_Millions)
+  
+  # Convert Date columns to date format
+  year <- format(today(), "%Y")
+  company_data$Price_From <- as.Date(paste0(year, "-", substr(company_data$Price_From, 1, 2), "-", substr(company_data$Price_From, 4, 5)))
+  company_data$Most_Recent_Quarter_Data <- as.Date(paste0(year, "-", substr(company_data$Most_Recent_Quarter_Data, 1, 2), "-", substr(company_data$Most_Recent_Quarter_Data, 4, 5)))
+  
+  # Adjust names of the variables
+  prefix = "MF_"
+  colnames(company_data) <- ifelse(names(company_data) == "Ticker", "symbol", paste0(prefix,names(company_data)))
+  
+  return(company_data)
+}
+
+## 02.1 - Function to extract company data from session  -----------------------
+extract_company_data <- function(session, MinimumMarketCap, TopGreenblatt) {
+  # year <- format(last_business_date, "%Y")
+  
+  company_data <- session %>%
+    html_nodes("table.screeningdata tbody tr") %>%
+    map_df(~{
+      tds <- html_nodes(.x, "td")
+      data.frame(
+        Company_Name = html_text(tds[1]),
+        Ticker = html_text(tds[2]),
+        Market_Cap_Millions = gsub(",", "", html_text(tds[3]), fixed = TRUE), # Remove commas
+        Price_From = html_text(tds[4]),
+        Most_Recent_Quarter_Data = html_text(tds[5]),
+        threshold_mktCap = MinimumMarketCap,
+        TopGreenblatt = TopGreenblatt,
+        stringsAsFactors = FALSE
+      )
+    })
 }
 
 get_quote_data_df <- function(symbols_df, API_Key){

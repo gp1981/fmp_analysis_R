@@ -3,6 +3,7 @@
 # Fundamental Analysis for Value Investors
 
 This repository contains R code to perform fundamental analysis for value investors. It leverages the `dplyr` and `tidyverse` libraries along with `fmpcloudr` to retrieve and analyze financial data from [Financialmodelingprep API (fmp)](https://financialmodelingprep.com/developer/docs/).
+Also, the code retrieves data from [Greenblatt's magic formula website](https://www.magicformulainvesting.com/) which is used for further analysis.
 
 ## Features
 
