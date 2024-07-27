@@ -48,4 +48,4 @@ combined_equity_variable_df <- extract_specific_variables(financial_statements_a
 # 03 - Retrieve data from www.magicformulainvesting.com (MF) ----------------
 MF_df <- get_MF_data_df(mktCap_limit_lower = 1000, mktCap_limit_upper = 20000, mktCap_step_M = 100)
 
-# export_excel_data(MF_df)
+export_excel_data(MF_df)
