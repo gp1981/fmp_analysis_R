@@ -161,6 +161,9 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
     mutate_at(vars(date), as.Date) %>% 
     mutate_at(vars(calendarYear), as.integer)
   
+  Profile <- Profile %>% 
+    mutate_at(vars(ipoDate), as.Date)
+  
   # Combine all data into a dataframe or a single data frame, depending on your needs
   # Ensure the 'symbol' column exists and is consistent across all dataframes
   stopifnot("symbol" %in% colnames(symbols_df))
@@ -181,8 +184,7 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
   sum(is.na(Ratios$symbol))
   
   # Perform joins step-by-step and inspect the results
-symbols_df <- symbols_df %>% 
-  left_join(Profile) %>%
+fundamentals <- Profile %>% 
   left_join(IS) %>%
   left_join(BS) %>%
   left_join(CF) %>%
@@ -190,10 +192,41 @@ symbols_df <- symbols_df %>%
   left_join(Ratios)
 
 # Calculate correct dividends
-symbols_df <- symbols_df %>% 
+fundamentals <- fundamentals %>% 
   mutate(dividend_paid_calculated = (dividendYield) * (marketCap))  
 
-  return(symbols_df)
+## Prepare output ----------
+
+# Prepare dataframe with necessary columns
+symbols_df <- symbols_df %>%
+  select(-c(name, price))
+
+# Combine dataframes
+fundamentals <- fundamentals %>% 
+  left_join(symbols_df, by = "symbol")
+
+# Get the names of the columns in the combined dataframe
+column_names <- names(fundamentals)
+
+# Find columns that end with ".y"
+y_columns <- grep("\\.y$", column_names, value = TRUE)
+
+# Remove columns with ".y" suffix
+fundamentals <- fundamentals %>% select(-all_of(y_columns))
+
+# Find columns that end with ".x"
+x_columns <- grep("\\.x$", column_names, value = TRUE)
+
+# Function to remove the ".x" suffix
+remove_x_suffix <- function(name) {
+  sub("\\.x$", "", name)
+}
+
+# Rename columns with ".x" suffix to remove the suffix
+fundamentals <- fundamentals %>%
+  rename_with(remove_x_suffix, all_of(x_columns))
+
+  return(fundamentals)
 }
 
 get_financial_statements_as_reported_list <- function(symbols_df, period, limit, API_Key) {
@@ -374,15 +407,17 @@ get_MF_data_df <- function(mktCap_limit_lower_M, mktCap_limit_upper_M, mktCap_st
     # Append to company_data 
     company_data <- rbind(company_data, company_data_merged_unique)
     
-    # Pause for 0.2 second to avoid overloading the server
-    Sys.sleep(0.2)
+    # Pause for 0.1 second to avoid overloading the server
+    Sys.sleep(0.1)
   }
   # 
   # Filter duplicate at higher threshold market cap
   company_data <- company_data %>%
-    group_by(Company_Name) %>%
+    rename(name = Company_Name,
+           symbol = Ticker) %>% 
+    group_by(name) %>%
     arrange(threshold_mktCap) %>%
-    distinct(Company_Name, .keep_all = TRUE) %>%
+    distinct(name, .keep_all = TRUE) %>%
     ungroup()
   
   
@@ -399,10 +434,10 @@ get_MF_data_df <- function(mktCap_limit_lower_M, mktCap_limit_upper_M, mktCap_st
   company_data$Price_From <- as.Date(paste0(year, "-", substr(company_data$Price_From, 1, 2), "-", substr(company_data$Price_From, 4, 5)))
   company_data$Most_Recent_Quarter_Data <- as.Date(paste0(year, "-", substr(company_data$Most_Recent_Quarter_Data, 1, 2), "-", substr(company_data$Most_Recent_Quarter_Data, 4, 5)))
   
-  # Adjust names of the variables
-  prefix = "MF_"
-  colnames(company_data) <- ifelse(names(company_data) == "Ticker", "symbol", paste0(prefix,names(company_data)))
-  
+  # # Adjust names of the variables
+  # prefix = "MF_"
+  # colnames(company_data) <- ifelse(names(company_data) == "Ticker", "symbol", paste0(prefix,names(company_data)))
+  # 
   return(company_data)
 }
 
