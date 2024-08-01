@@ -143,7 +143,7 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
   # Formatting data
   IS <- IS %>% 
     mutate(across(c(date,fillingDate,acceptedDate), as.Date)) %>% 
-    mutate_at(vars(calendarYear), as.integer)
+    mutate_at(vars(calendarYear), as.integer) 
   
   BS <- BS %>% 
     mutate(across(c(date,fillingDate,acceptedDate), as.Date)) %>% 
@@ -151,18 +151,19 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
   
   CF <- CF %>% 
     mutate(across(c(date,fillingDate,acceptedDate), as.Date)) %>% 
-    mutate_at(vars(calendarYear), as.integer)
+    mutate_at(vars(calendarYear), as.integer) 
   
   Ratios <- Ratios %>% 
     mutate_at(vars(date), as.Date) %>% 
-    mutate_at(vars(calendarYear), as.integer)
+    mutate_at(vars(calendarYear), as.integer) 
   
   KeyMetrics <- KeyMetrics %>% 
     mutate_at(vars(date), as.Date) %>% 
-    mutate_at(vars(calendarYear), as.integer)
+    mutate_at(vars(calendarYear), as.integer) 
   
   Profile <- Profile %>% 
-    mutate_at(vars(ipoDate), as.Date)
+    mutate_at(vars(ipoDate), as.Date) %>% 
+    mutate(Statement = "Profile")
   
   # Combine all data into a dataframe or a single data frame, depending on your needs
   # Ensure the 'symbol' column exists and is consistent across all dataframes
