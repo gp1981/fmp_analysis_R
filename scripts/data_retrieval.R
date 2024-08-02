@@ -1,6 +1,6 @@
 # Author: gp1981
 # Date: 16 July 2024
-# Purpose: Load all libraries and files
+# Purpose: Retrieve data
 # Disclaimer: The code is provided as-is and the author takes no responsibility for any issues or damages arising from its use.
 
 # 01 - Get data   --------------------------------------------------------------
@@ -506,10 +506,3 @@ get_quote_data_df <- function(symbols_df, API_Key){
   
 }
 
-# 02 - Calculated variables  ---------------------------------------------------------------
-
-history_total_equity_book_value_df <- function(symbols_df, fundamentals_df, financial_statements_as_reported_list){
-  # calculation to include:
-  # fundamentals_df$totalStockholdersEquity
-  
-}
