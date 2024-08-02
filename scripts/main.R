@@ -7,6 +7,7 @@
 # 01 - Source libraries and utility functions ----------------------------------
 source('scripts/utils.R')
 source('scripts/data_retrieval.R')
+source('scripts/analysis.R')
 
 # 02 - Get stock data from fmp and MF ------------------------------------------
 symbols_df <- get_stock_data_df(API_Key = API_Key)
@@ -46,15 +47,9 @@ quote_data_df <- get_quote_data_df(symbols_df_MF, API_Key = API_Key)
 # 
 export_excel_data(fundamentals_df)
 
-# 06 - Analysis -------------------INDIVIDUAL ELEMENTs NA----------------
-## 06.1 - Additional variables --------------
-fundamentals_df <- fundamentals_df %>% 
-  mutate(
-    Historical_Total_Equity_aux = totalStockholdersEquity + coalesce(commonStockRepurchased,0) - 
-        coalesce(commonStockIssued,0) + coalesce(dividend_paid_calculated,0)
-    )
+# 06 - Magic Formula Ranking ---------------------------------------------
+symbols_df_MF_rank <- calculate_MF_ranking(fundamentals_df)
 
-
-## 06.1 - Ratio analysis --------------------------------------------------------
+# 07- Ratio analysis --------------------------------------------------------
 
 
