@@ -185,48 +185,48 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
   sum(is.na(Ratios$symbol))
   
   # Perform joins step-by-step and inspect the results
-fundamentals <- Profile %>% 
-  left_join(IS) %>%
-  left_join(BS) %>%
-  left_join(CF) %>%
-  left_join(KeyMetrics) %>%
-  left_join(Ratios)
-
-# Calculate correct dividends
-fundamentals <- fundamentals %>% 
-  mutate(dividend_paid_calculated = (dividendYield) * (marketCap))  
-
-## Prepare output ----------
-
-# Prepare dataframe with necessary columns
-symbols_df <- symbols_df %>%
-  select(-c(name, price))
-
-# Combine dataframes
-fundamentals <- fundamentals %>% 
-  left_join(symbols_df, by = "symbol")
-
-# Get the names of the columns in the combined dataframe
-column_names <- names(fundamentals)
-
-# Find columns that end with ".y"
-y_columns <- grep("\\.y$", column_names, value = TRUE)
-
-# Remove columns with ".y" suffix
-fundamentals <- fundamentals %>% select(-all_of(y_columns))
-
-# Find columns that end with ".x"
-x_columns <- grep("\\.x$", column_names, value = TRUE)
-
-# Function to remove the ".x" suffix
-remove_x_suffix <- function(name) {
-  sub("\\.x$", "", name)
-}
-
-# Rename columns with ".x" suffix to remove the suffix
-fundamentals <- fundamentals %>%
-  rename_with(remove_x_suffix, all_of(x_columns))
-
+  fundamentals <- Profile %>% 
+    left_join(IS) %>%
+    left_join(BS) %>%
+    left_join(CF) %>%
+    left_join(KeyMetrics) %>%
+    left_join(Ratios)
+  
+  # Calculate correct dividends
+  fundamentals <- fundamentals %>% 
+    mutate(dividend_paid_calculated = (dividendYield) * (marketCap))  
+  
+  ## Prepare output ----------
+  
+  # Prepare dataframe with necessary columns
+  symbols_df <- symbols_df %>%
+    select(-c(name, price))
+  
+  # Combine dataframes
+  fundamentals <- fundamentals %>% 
+    left_join(symbols_df, by = "symbol")
+  
+  # Get the names of the columns in the combined dataframe
+  column_names <- names(fundamentals)
+  
+  # Find columns that end with ".y"
+  y_columns <- grep("\\.y$", column_names, value = TRUE)
+  
+  # Remove columns with ".y" suffix
+  fundamentals <- fundamentals %>% select(-all_of(y_columns))
+  
+  # Find columns that end with ".x"
+  x_columns <- grep("\\.x$", column_names, value = TRUE)
+  
+  # Function to remove the ".x" suffix
+  remove_x_suffix <- function(name) {
+    sub("\\.x$", "", name)
+  }
+  
+  # Rename columns with ".x" suffix to remove the suffix
+  fundamentals <- fundamentals %>%
+    rename_with(remove_x_suffix, all_of(x_columns))
+  
   return(fundamentals)
 }
 
@@ -288,7 +288,7 @@ get_financial_statements_as_reported_list <- function(symbols_df, period, limit,
     }
   })
   
-
+  
   # Return the list of data frames
   return(df_list)
 }
@@ -336,9 +336,123 @@ get_price_history_data_df <- function(symbols_df, startDate, endDate , API_Key){
   
 }
 
+get_hist_index_df <- function(index, API_Key) {
+  
+  get_hist_index_data <- function(api_hist_path, api_path) {
+    # Connect to FMP data and create data frames
+    df_Hist <- fromJSON(api_hist_path)
+    df_Current <- fromJSON(api_path)
+    
+    # Convert JSON data into data frames
+    df_Hist <- as.data.frame(df_Hist)
+    df_Current <- as.data.frame(df_Current)
+    
+    # Convert date formats
+    df_Hist <- df_Hist %>%
+      mutate(dateAdded = mdy(dateAdded))
+    
+    df_Current <- df_Current %>%
+      mutate(dateFirstAdded = as.Date(dateFirstAdded, format = "%Y-%m-%d"),
+             founded = as.Date(founded, format = "%Y"))
+    
+    # Split historical data into two data frames by filtering empty values
+    df_Hist_Added <- df_Hist %>% 
+      filter(removedTicker == "")
+    
+    df_Hist_Removed <- df_Hist %>% 
+      filter(addedSecurity == "")
+    
+    # Add today's date
+    df_Current <- df_Current %>% 
+      mutate(date = as.Date(Sys.Date())) %>% 
+      select(date, everything())
+    
+    # Create a vector of dates of changes
+    dateseq <- df_Hist %>% 
+      select(dateAdded) %>% 
+      mutate(date = as.Date(dateAdded, format = "%Y-%m-%d")) %>% 
+      select(-dateAdded) %>% 
+      distinct(date)
+    
+    # Initialize the full historical constituents
+    df_Full <- df_Current
+    
+    # # Progress bar
+    pb <- progress::progress_bar$new(
+      format = "  [:bar] :percent in :elapsed",
+      total = nrow(dateseq), 
+      width = 60
+    )
+    
+    # Loop through each date in dateseq
+    for (i in 1:nrow(dateseq)) {
+      pb$tick()
+      date_n <- dateseq$date[i]
+      
+      # Identify securities that have been removed and added
+      removed <- df_Hist_Removed %>% 
+        filter(date == date_n) %>% 
+        mutate(date = as.Date(date, format = "%Y-%m-%d"))
+      
+      added <- df_Hist_Added %>% 
+        filter(date == date_n) %>% 
+        mutate(date = as.Date(date, format = "%Y-%m-%d"))
+      
+      # Recreate constituents for previous period
+      df_n_1 <- df_Full %>% 
+        filter(date == min(date)) %>% 
+        select(-date) %>% 
+        mutate(date = date_n) %>% 
+        select(date, everything()) %>% 
+        anti_join(added, by = "symbol") %>% 
+        bind_rows(removed) %>% 
+        select(-(8:14))
+      
+      df_Full <- df_Full %>% 
+        bind_rows(df_n_1)
+    }
+    
+    return(df_Full)
+  }
+  
+  # Define API paths for each index
+  if (index == "SP500") {
+    API_Hist_path <- paste0('https://financialmodelingprep.com/api/v3/historical/sp500_constituent?apikey=', API_Key)
+    API_Current_path <- paste0('https://financialmodelingprep.com/api/v3/sp500_constituent?apikey=', API_Key)
+    df <- get_hist_index_data(API_Hist_path, API_Current_path)
+  } else if (index == "NASDAQ") {
+    API_Hist_path <- paste0('https://financialmodelingprep.com/api/v3/historical/nasdaq_constituent?apikey=', API_Key)
+    API_Current_path <- paste0('https://financialmodelingprep.com/api/v3/nasdaq_constituent?apikey=', API_Key)
+    df <- get_hist_index_data(API_Hist_path, API_Current_path)
+  } else if (index == "DOW") {
+    API_Hist_path <- paste0('https://financialmodelingprep.com/api/v3/historical/dowjones_constituent?apikey=', API_Key)
+    API_Current_path <- paste0('https://financialmodelingprep.com/api/v3/dowjones_constituent?apikey=', API_Key)
+    df <- get_hist_index_data(API_Hist_path, API_Current_path)
+  } else if (index == "ALL") {
+    API_SP500_Hist_path <- paste0('https://financialmodelingprep.com/api/v3/historical/sp500_constituent?apikey=', API_Key)
+    API_SP500_Current_path <- paste0('https://financialmodelingprep.com/api/v3/sp500_constituent?apikey=', API_Key)
+    
+    API_NASDAQ_Hist_path <- paste0('https://financialmodelingprep.com/api/v3/historical/nasdaq_constituent?apikey=', API_Key)
+    API_NASDAQ_Current_path <- paste0('https://financialmodelingprep.com/api/v3/nasdaq_constituent?apikey=', API_Key)
+    
+    API_DOW_Hist_path <- paste0('https://financialmodelingprep.com/api/v3/historical/dowjones_constituent?apikey=', API_Key)
+    API_DOW_Current_path <- paste0('https://financialmodelingprep.com/api/v3/dowjones_constituent?apikey=', API_Key)
+    
+    df_SP500 <- get_hist_index_data(API_SP500_Hist_path, API_SP500_Current_path)
+    df_NASDAQ <- get_hist_index_data(API_NASDAQ_Hist_path, API_NASDAQ_Current_path)
+    df_DOW <- get_hist_index_data(API_DOW_Hist_path, API_DOW_Current_path)
+    
+    df <- list(SP500 = df_SP500, NASDAQ = df_NASDAQ, DOW = df_DOW)
+  } else {
+    stop("Invalid index provided. Please choose 'SP500', 'NASDAQ', 'DOW', or 'ALL'.")
+  }
+  
+  return(df)
+}
+
 # 02 - Get data from www.magicformulainvesting.com  -----------------------------
 get_MF_data_df <- function(mktCap_limit_lower_M, mktCap_limit_upper_M, mktCap_step_M){
-
+  
   # 1 - Login and open session ----------------------------------------------
   
   # Ask for username and password

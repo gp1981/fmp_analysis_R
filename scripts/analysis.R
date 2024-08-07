@@ -5,12 +5,21 @@
 
 # 01 - MF ranking   --------------------------------------------------------------
 calculate_MF_ranking <- function(df){
-  ## 01.1 - Calculation of 4FQ rolling sum of Op. Income
+  ## 01.1 - Calculation of 4FQ rolling sum, Earnings Yield and Return on Capital
   df <- df %>% 
     group_by(symbol) %>%
     arrange(desc(date)) %>% 
     mutate(EBIT.4FQ = rollapply(operatingIncome,
                                 width = 4, FUN = sum, align = "left", fill = NA)) %>% 
+  
+    mutate(Net_Tanbgile = totalAssets - totalLiabilities - goodwillAndIntangibleAssets) %>% 
+    
+    mutate(fcf.4FQ = rollapply(operatingIncome,
+                             width = 4, FUN = sum, align = "left", fill = NA)) %>%
+    
+    mutate(Step_1_mktCap_less_Net_Tangible = mktCap - Net_Tanbgile,
+           
+           Step_2_over_fcf = Step_1_mktCap_less_Net_Tangible / fcf.4FQ) %>% 
     
     mutate(Excess_Cash = cashAndCashEquivalents * 0.9 + shortTermInvestments) %>% 
     
@@ -29,7 +38,7 @@ calculate_MF_ranking <- function(df){
     
     mutate(Earnings_Yield = EBIT.4FQ / Enterprise_Value) %>% 
     
-    select(date,symbol, companyName, mktCap, Enterprise_Value, Earnings_Yield, Return_On_Capital_Employed,
+    select(date,symbol, companyName, mktCap, Step_1_mktCap_less_Net_Tangible, Step_2_over_fcf, Enterprise_Value, Earnings_Yield, Return_On_Capital_Employed,
            EBIT.4FQ, Tangible_Capital_Employed, Net_Working_Capital, Excess_Cash, everything()) %>% 
     ungroup()
   
@@ -39,9 +48,8 @@ calculate_MF_ranking <- function(df){
 }
 
 EY_ROCE_ranking <- function(df){
-  df <- df %>% 
-    mutate(aux.rank = "A") # Auxiliary variable
-  
+  ## 01.2 - Calculation of ranking MF
+
   df <- df %>%
     group_by(symbol) %>%
     arrange(desc(date)) %>%
@@ -50,7 +58,6 @@ EY_ROCE_ranking <- function(df){
   
   df <- df %>% 
     filter(!is.na(Return_On_Capital_Employed) & is.finite(Return_On_Capital_Employed)) %>% 
-    group_by(aux.rank) %>% 
     arrange(desc(Return_On_Capital_Employed)) %>% 
     mutate(Rank_Return_On_Capital_Employed = dplyr::row_number()) %>% 
     select(date,symbol, companyName, mktCap, Enterprise_Value, Earnings_Yield, Rank_Return_On_Capital_Employed,
@@ -60,7 +67,6 @@ EY_ROCE_ranking <- function(df){
   
   df <- df %>% 
     filter(!is.na(Earnings_Yield) & is.finite(Earnings_Yield) ) %>% 
-    group_by(aux.rank) %>% 
     arrange(desc(Earnings_Yield)) %>% 
     mutate(Rank_Earnings_Yield = dplyr::row_number()) %>% 
     select(date,symbol, companyName, mktCap, Enterprise_Value, Rank_Earnings_Yield, 
@@ -70,12 +76,10 @@ EY_ROCE_ranking <- function(df){
     ungroup()
   
   df <- df %>% 
-    group_by(aux.rank) %>%
     mutate(Rank_EY_ROCE_absolute = Rank_Return_On_Capital_Employed + Rank_Earnings_Yield)%>% 
     ungroup()
   
   df <- df %>% 
-    group_by(aux.rank) %>%
     arrange(Rank_EY_ROCE_absolute) %>% 
     mutate(Rank_EY_ROCE = dplyr::row_number()) %>%
     select(date,symbol, companyName, mktCap, Rank_EY_ROCE, Enterprise_Value, Rank_Earnings_Yield, 
@@ -88,3 +92,222 @@ EY_ROCE_ranking <- function(df){
   return(df)
 }
 
+
+# 02 - Analysis -----------------------------------------------------------
+
+ratio_analysis_chart <- function(financial_data_df){
+  
+  # Data processing ---------------------------------------------------------
+  
+  # Function to calculate IQR limits
+  calculate_iqr_limits <- function(df, financial_data_df_column) {
+    Q1 <- quantile(df[[financial_data_df_column]], 0.25, na.rm = TRUE)
+    Q3 <- quantile(df[[financial_data_df_column]], 0.75, na.rm = TRUE)
+    IQR <- Q3 - Q1
+    lower_limit <- Q1 - 1.5 * IQR
+    upper_limit <- Q3 + 1.5 * IQR
+    return(c(lower_limit, upper_limit))
+  }
+  
+  # List of ratio columns to process
+  financial_data_df_columns <- c("currentRatio", "quickRatio", "cashRatio", 
+                                 "daysOfSalesOutstanding", "daysOfInventoryOutstanding", 
+                                 "daysOfPayablesOutstanding", "operatingCycle", 
+                                 "cashConversionCycle", "debtEquityRatio", 
+                                 "totalDebtToCapitalization", "longTermDebtToCapitalization", 
+                                 "shortTermCoverageRatios", "cashFlowToDebtRatio")
+  
+  # Reshape the data to long format
+  current_assets_ratio_data_long <- financial_data_df %>%
+    select(symbol, date, currentRatio, quickRatio, cashRatio) %>%
+    pivot_longer(cols = c(currentRatio, quickRatio, cashRatio),
+                 names_to = "ratio_type", 
+                 values_to = "value")
+  
+  cash_conversion_ratio_data_long <- financial_data_df %>%
+    select(symbol, date, daysOfSalesOutstanding, daysOfInventoryOutstanding, 
+           daysOfPayablesOutstanding, operatingCycle, cashConversionCycle) %>%
+    pivot_longer(cols = c(daysOfSalesOutstanding, daysOfInventoryOutstanding, 
+                          daysOfPayablesOutstanding, operatingCycle, cashConversionCycle),
+                 names_to = "ratio_type", 
+                 values_to = "value")
+  
+  debt_ratio_data_long <- financial_data_df %>%
+    select(symbol, date, debtEquityRatio, totalDebtToCapitalization, longTermDebtToCapitalization) %>%
+    pivot_longer(cols = c(debtEquityRatio, totalDebtToCapitalization, longTermDebtToCapitalization),
+                 names_to = "ratio_type", 
+                 values_to = "value")
+  
+  debt_coverage_data_long <- financial_data_df %>%
+    select(symbol, date, shortTermCoverageRatios, cashFlowToDebtRatio) %>%
+    pivot_longer(cols = c(shortTermCoverageRatios, cashFlowToDebtRatio),
+                 names_to = "ratio_type", 
+                 values_to = "value")
+  
+  
+  # Calculate IQR limits for each combination of symbol and ratio_type
+  current_assets_iqr_limits <- current_assets_ratio_data_long %>%
+    group_by(symbol, ratio_type) %>%
+    summarize(ymin = calculate_iqr_limits(cur_data(), "value")[1],
+              ymax = calculate_iqr_limits(cur_data(), "value")[2],
+              .groups = 'drop')
+  
+  cash_conversion_iqr_limits <- cash_conversion_ratio_data_long %>%
+    group_by(symbol, ratio_type) %>%
+    summarize(ymin = calculate_iqr_limits(cur_data(), "value")[1],
+              ymax = calculate_iqr_limits(cur_data(), "value")[2],
+              .groups = 'drop')
+  
+  debt_ratio_iqr_limits <- debt_ratio_data_long %>%
+    group_by(symbol, ratio_type) %>%
+    summarize(ymin = calculate_iqr_limits(cur_data(), "value")[1],
+              ymax = calculate_iqr_limits(cur_data(), "value")[2],
+              .groups = 'drop')
+  
+  debt_coverage_iqr_limits <- debt_coverage_data_long %>%
+    group_by(symbol, ratio_type) %>%
+    summarize(ymin = calculate_iqr_limits(cur_data(), "value")[1],
+              ymax = calculate_iqr_limits(cur_data(), "value")[2],
+              .groups = 'drop')
+  
+  # Convert date to Date format if it's not already
+  current_assets_ratio_data_long$date <- as.Date(current_assets_ratio_data_long$date)
+  cash_conversion_ratio_data_long$date <- as.Date(cash_conversion_ratio_data_long$date)
+  debt_ratio_data_long$date <- as.Date(debt_ratio_data_long$date)
+  debt_coverage_data_long$date <- as.Date(debt_coverage_data_long$date)
+  
+  # Plotting ----------------------------------------------------------------
+  
+  
+  
+  ## 01 - Current asset ratios ----------------------------------------------------
+  
+  # Plotting current asset ratios
+  current_assets_plot <- ggplot(current_assets_ratio_data_long, aes(x = date, y = value, color = ratio_type)) +
+    geom_line(size = 1) +
+    facet_wrap(~ symbol, scales = "free_y", ncol = 2) +
+    labs(x = NULL, y = "Ratio Value",
+         title = "Trends of Financial Ratios Over Time",
+         subtitle = "Current, Quick, and Cash Ratios by Symbol",
+         color = "Ratio Type") +
+    scale_color_manual(values = c("currentRatio" = "#0072B2", 
+                                  "quickRatio" = "#009E73", 
+                                  "cashRatio" = "#D55E00"),
+                       labels = c("currentRatio" = "Current Ratio", 
+                                  "quickRatio" = "Quick Ratio", 
+                                  "cashRatio" = "Cash Ratio")) +
+    scale_y_continuous(limits = c(min(current_assets_iqr_limits$ymin, na.rm = TRUE) * 0.8, 
+                                  max(current_assets_iqr_limits$ymax, na.rm = TRUE) * 0.8)) +
+    theme_minimal() +
+    theme(panel.spacing = unit(1, "lines"),
+          strip.background = element_blank(),
+          strip.text = element_text(face = "bold", size = 11),
+          plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+          plot.subtitle = element_text(size = 12, hjust = 0.5),
+          legend.position = "bottom",
+          legend.title = element_text(face = "bold", size = 11),
+          legend.text = element_text(size = 10),
+          axis.text = element_text(size = 10),
+          axis.title = element_text(size = 11, face = "bold"))
+  
+  ## 02 - Cash conversion ratios ----------------------------------------------------
+  
+  # Plotting cash conversion ratios
+  cash_conversion_plot <- ggplot(cash_conversion_ratio_data_long, aes(x = date, y = value, color = ratio_type)) +
+    geom_line(size = 1) +
+    facet_wrap(~ symbol, scales = "free_y", ncol = 2) +
+    labs(x = NULL, y = "Ratio Value",
+         title = "Trends of Financial Ratios Over Time",
+         subtitle = "Cash conversion ratio by Symbol",
+         color = "Ratio Type") +
+    scale_color_manual(values = c("daysOfSalesOutstanding" = "#0072B2",
+                                  "daysOfInventoryOutstanding" = "#009E73",
+                                  "daysOfPayablesOutstanding" = "#D55E00",
+                                  "operatingCycle" = "#CC79A7",
+                                  "cashConversionCycle" = "#E69F00"),
+                       labels = c("daysOfSalesOutstanding" = "Days of Sales Outstanding (DSO)", 
+                                  "daysOfInventoryOutstanding" = "Days of Inventory Outstanding (DIO)", 
+                                  "daysOfPayablesOutstanding" = "Days of Payable Outstanding (DPO)",
+                                  "operatingCycle" = "Operating Cycle (DSO + DIO)",
+                                  "cashConversionCycle" = "Cash Conversion Cycle (DSO + DIO + DPO)")) +
+    scale_y_continuous(limits = c(min(cash_conversion_iqr_limits$ymin, na.rm = TRUE) * 0.8, 
+                                  max(cash_conversion_iqr_limits$ymax, na.rm = TRUE) * 0.8)) +
+    theme_minimal() +
+    theme(panel.spacing = unit(1, "lines"),
+          strip.background = element_blank(),
+          strip.text = element_text(face = "bold", size = 11),
+          plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+          plot.subtitle = element_text(size = 12, hjust = 0.5),
+          legend.position = "bottom",
+          legend.title = element_text(face = "bold", size = 11),
+          legend.text = element_text(size = 10),
+          axis.text = element_text(size = 10),
+          axis.title = element_text(size = 11, face = "bold"))
+  
+  
+  ## 03 - Debt ratios ----------------------------------------------------
+  
+  # Plotting debt ratios
+  debt_ratios_plot <- ggplot(debt_ratio_data_long, aes(x = date, y = value, color = ratio_type)) +
+    geom_line(size = 1) +
+    facet_wrap(~ symbol, scales = "free_y", ncol = 2) +
+    labs(x = NULL, y = "Ratio Value",
+         title = "Trends of Financial Ratios Over Time",
+         subtitle = "Debt ratios by Symbol",
+         color = "Ratio Type") +
+    scale_color_manual(values = c("debtEquityRatio" = "#0072B2",
+                                  "totalDebtToCapitalization" = "#009E73",
+                                  "longTermDebtToCapitalization" = "#D55E00"),
+                       labels = c("debtEquityRatio" = "Debt to Equity (Total Liabilities / Total Equity)",
+                                  "totalDebtToCapitalization" = "Total Debt to Capitalization (Total Debt / (Total Debt + Total Equity))", 
+                                  "longTermDebtToCapitalization" = "Long Term Capitalization (Long Term Debt / (Long Term Debt + Total Equity))")) + 
+    scale_y_continuous(limits = c(min(debt_ratio_iqr_limits$ymin, na.rm = TRUE) * 0.8, 
+                                  max(debt_ratio_iqr_limits$ymax, na.rm = TRUE) * 0.8)) +
+    theme_minimal() +
+    theme(panel.spacing = unit(1, "lines"),
+          strip.background = element_blank(),
+          strip.text = element_text(face = "bold", size = 11),
+          plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+          plot.subtitle = element_text(size = 12, hjust = 0.5),
+          legend.position = "bottom",
+          legend.title = element_text(face = "bold", size = 11),
+          legend.text = element_text(size = 10),
+          axis.text = element_text(size = 10),
+          axis.title = element_text(size = 11, face = "bold")
+    )
+  
+  # Plotting debt coverage
+  debt_coverage_plot <- ggplot(debt_coverage_data_long, aes(x = date, y = value, color = ratio_type)) +
+    geom_line(size = 1) +
+    facet_wrap(~ symbol, scales = "free_y", ncol = 2) +
+    labs(x = NULL, y = "Ratio Value",
+         title = "Trends of Debt Coverage Over Time",
+         subtitle = "Debt coverage by Symbol",
+         color = "Ratio Type") +
+    scale_color_manual(values = c("shortTermCoverageRatios" = "#0072B2", 
+                                  "cashFlowToDebtRatio" = "#E69F00"),
+                       labels = c("shortTermCoverageRatios" = "Short Term Coverage Ratio (Operating Cash Flow / Short Term Debt)",
+                                  "cashFlowToDebtRatio" =  "Cash Flow to Debt Ratio (Operating Cash Flow / Total Debt)")) + 
+    scale_y_continuous(limits = c(min(debt_coverage_iqr_limits$ymin, na.rm = TRUE) * 0.3, 
+                                  max(debt_coverage_iqr_limits$ymax, na.rm = TRUE) * 0.3)) +
+    theme_minimal() +
+    theme(panel.spacing = unit(1, "lines"),
+          strip.background = element_blank(),
+          strip.text = element_text(face = "bold", size = 11),
+          plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+          plot.subtitle = element_text(size = 12, hjust = 0.5),
+          legend.position = "bottom",
+          legend.title = element_text(face = "bold", size = 11),
+          legend.text = element_text(size = 10),
+          axis.text = element_text(size = 10),
+          axis.title = element_text(size = 11, face = "bold")
+    )
+  
+  plot_ratio_analysis <- list(
+    current_assets_plot = current_assets_plot, 
+    cash_conversion_plot = cash_conversion_plot, 
+    debt_ratios_plot = debt_ratios_plot, 
+    debt_coverage_plot = debt_coverage_plot)
+  
+  return(plot_ratio_analysis)
+}

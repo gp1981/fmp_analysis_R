@@ -9,18 +9,23 @@ source('scripts/utils.R')
 source('scripts/data_retrieval.R')
 source('scripts/analysis.R')
 
-# 02 - Get stock data from fmp and MF ------------------------------------------
+# 02 - Get stock data from fmp, S&P500, NASDAQ, DOW and Magic Formula ------------------------------------------
 symbols_df <- get_stock_data_df(API_Key = API_Key)
 MF_df <- get_MF_data_df(mktCap_limit_lower = 1000, mktCap_limit_upper = 20000, mktCap_step_M = 100)
 
-# 03 - Select companies from www.magicformulainvesting.com (MF) ----------------
+# 0 - Get historical data of S&P500, NASDAQ, DOW (WIP) ------------------------------------------
+hist_SP500_df <- get_hist_index_df(index = "SP500", API_Key)
+hist_NASDAQ_df <- get_hist_index_df(index = "NASDAQ", API_Key)
+hist_DOW_df <- get_hist_index_df(index = "DOW", API_Key)
+
+# 04 - Select companies from www.magicformulainvesting.com (MF) ----------------
 symbols_df_MF <- MF_df %>% 
   left_join(symbols_df, by = "symbol") %>% 
   select(-name.x) %>% 
   rename(name = name.y) %>% 
   select(name, everything())
 
-# 04 - Get fundamentals and quotes from fmp of selected stocks -------------------------
+# 05 - Get fundamentals and quotes from fmp of selected stocks -------------------------
 fundamentals_df <- get_fundamentals_data_df(symbols_df_MF, period = "quarter", 
                                             limit = 12, API_Key = API_Key)
 
@@ -28,7 +33,7 @@ price_history_data_df <- get_price_history_data_df(symbols_df_MF, startDate = hi
 
 quote_data_df <- get_quote_data_df(symbols_df_MF, API_Key = API_Key)
 
-# 05 - Get filing as reported from fmp (WIP) ------------------
+# 0 - Get filing as reported from fmp (WIP) ------------------
 # financial_statements_as_reported_list <- get_financial_statements_as_reported_list(symbols_df, period = "quarter", limit = 12, API_Key = API_Key)
 # 
 # # Identify specific variables of filings as reported ---
@@ -47,9 +52,18 @@ quote_data_df <- get_quote_data_df(symbols_df_MF, API_Key = API_Key)
 # 
 export_excel_data(fundamentals_df)
 
-# 06 - Magic Formula Ranking ---------------------------------------------
+# 07 - Magic Formula Ranking ---------------------------------------------
 symbols_df_MF_rank <- calculate_MF_ranking(fundamentals_df)
 
-# 07- Ratio analysis --------------------------------------------------------
+# 08 - Ratio analysis --------------------------------------------------------
+ratio_analysis_plot <- ratio_analysis_chart(fundamentals_df) # max 5 companies
 
+# Charts
+ratio_analysis_plot$current_assets_plot
+
+ratio_analysis_plot$cash_conversion_plot
+
+ratio_analysis_plot$debt_ratios_plot
+
+ratio_analysis_plot$debt_coverage_plot
 
