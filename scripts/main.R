@@ -53,10 +53,14 @@ quote_data_df <- get_quote_data_df(symbols_df_MF, API_Key = API_Key)
 export_excel_data(fundamentals_df)
 
 # 07 - Magic Formula Ranking ---------------------------------------------
-symbols_df_MF_rank <- calculate_MF_ranking(fundamentals_df)
+df_MF_rank <- calculate_MF_ranking(fundamentals_df)
 
 # 08 - Ratio analysis --------------------------------------------------------
-ratio_analysis_plot <- ratio_analysis_chart(fundamentals_df) # max 5 companies
+
+# Select companies for ratio analysis (max 5 companies e.g. peers)
+df_ratio <- fundamentals_df[1:48,]
+
+ratio_analysis_plot <- ratio_analysis_chart(df_ratio)
 
 # Charts
 ratio_analysis_plot$current_assets_plot
@@ -66,4 +70,9 @@ ratio_analysis_plot$cash_conversion_plot
 ratio_analysis_plot$debt_ratios_plot
 
 ratio_analysis_plot$debt_coverage_plot
+
+
+
+# 09 - Valuation ----------------------------------------------------------
+
 

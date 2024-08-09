@@ -3,32 +3,116 @@
 # Purpose: Perform analysis
 # Disclaimer: The code is provided as-is and the author takes no responsibility for any issues or damages arising from its use.
 
-# 01 - MF ranking   --------------------------------------------------------------
+
+# Excess of Cash ----------------------------------------------------------
+
+excess_cash <- function(df) {
+  
+  # Define year
+  df <- df %>% 
+    mutate(year = year(date))
+  
+  
+  # Calculate median cash over revenue for each year and industry
+  median.cash.industry <- df %>%
+    group_by(year, industry) %>%
+    filter(
+      !is.na(cashAndShortTermInvestments),
+      !is.na(revenue),
+      !revenue <= 0
+    ) %>%
+    dplyr::summarise(
+      median.cash_over_revenue = median(cashAndShortTermInvestments / revenue),
+      count.stocks.industry = n()
+    ) %>% 
+    ungroup()
+  
+  # Join the median cash data with the original data frame
+  df <- left_join(df, median.cash.industry, by = c('year', 'industry'))
+  
+  # Calculate the excess of cash based on different conditions
+  df <- df %>%
+    mutate(
+      excess.cash = case_when(
+        cashAndShortTermInvestments > cashAndCashEquivalents ~ cashAndShortTermInvestments - cashAndCashEquivalents - 
+          (dividend_paid_calculated + commonStockRepurchased),
+        cashAndShortTermInvestments <= cashAndCashEquivalents & revenue > 0 ~ as.numeric(revenue) * 0.05,
+        TRUE ~ 0
+      )
+    ) %>%
+    mutate(
+      Cash_ST.Industry.Benchmark = median.cash_over_revenue * revenue,
+      Excess.Cash.Industry.Benchmark = cashAndShortTermInvestments - Cash_ST.Industry.Benchmark) %>%
+    
+    mutate(
+      Excess.Cash.2 = case_when(
+        cashAndShortTermInvestments > cashAndCashEquivalents & revenue * 0.05 ~ coalesce(excess.cash,0),
+        Excess.Cash.Industry.Benchmark < cashAndShortTermInvestments & Excess.Cash.Industry.Benchmark > 0 & revenue * 0.05 ~ 
+          coalesce(Excess.Cash.Industry.Benchmark, 0),
+        TRUE ~ coalesce(pmax(0.05 * revenue, 0), 0)
+      )
+    )
+  
+  # Remove intermediate columns
+  df <- df %>%
+    select(-Cash_ST.Industry.Benchmark, -Excess.Cash.Industry.Benchmark, -median.cash_over_revenue, -excess.cash) %>% 
+    rename(excess_cash = Excess.Cash.2)
+  
+  return(df)
+}
+# MF ranking   --------------------------------------------------------------
 calculate_MF_ranking <- function(df){
-  ## 01.1 - Calculation of 4FQ rolling sum, Earnings Yield and Return on Capital
+  ## 01 - Calculation of 4FQ rolling sums, Earnings Yield and Return on Capital
   df <- df %>% 
     group_by(symbol) %>%
     arrange(desc(date)) %>% 
-    mutate(EBIT.4FQ = rollapply(operatingIncome,
-                                width = 4, FUN = sum, align = "left", fill = NA)) %>% 
+    mutate(
+      Revenue.4FQ = rollapply(revenue,
+                              width = 4, FUN = sum, align = "left", fill = NA),
+      EBIT.4FQ = rollapply(operatingIncome,
+                           width = 4, FUN = sum, align = "left", fill = NA),
+      FCF.4FQ = rollapply(freeCashFlow,
+                          width = 4, FUN = sum, align = "left", fill = NA),
+      Op_CashFlow.4FQ = rollapply(netCashProvidedByOperatingActivities,
+                                  width = 4, FUN = sum, align = "left", fill = NA),
+      Fin.CashFlow.4FQ = rollapply(netCashUsedForInvestingActivites,
+                                   width = 4, FUN = sum, align = "left", fill = NA),
+      Inv_CashFlow.4Q = rollapply(netCashUsedProvidedByFinancingActivities,
+                                  width = 4, FUN = sum, align = "left", fill = NA),
+      Capex.4FQ = rollapply(capitalExpenditure,
+                            width = 4, FUN = sum, align = "left", fill = NA),
+    ) %>% ungroup()
   
-    mutate(Net_Tanbgile = totalAssets - totalLiabilities - goodwillAndIntangibleAssets) %>% 
+  ## 02 - Calculation of excess of cash based on industry statistics
+  
+  df <- excess_cash(df)
+  
+  ## 03 - Calculation of MF Earnings Yield and Return on Capital
+  
+  df <- df %>% 
     
-    mutate(fcf.4FQ = rollapply(operatingIncome,
-                             width = 4, FUN = sum, align = "left", fill = NA)) %>%
     
-    mutate(Step_1_mktCap_less_Net_Tangible = mktCap - Net_Tanbgile,
+    mutate(Net_Tangible_Equity = totalAssets - totalLiabilities - goodwillAndIntangibleAssets) %>% 
+    
+    mutate() %>%
+    
+    mutate(Net_Tangible_Equity_Value = mktCap - Net_Tangible_Equity,
            
-           Step_2_over_fcf = Step_1_mktCap_less_Net_Tangible / fcf.4FQ) %>% 
+           FCF_tangible_equity_value_multiplier = Net_Tangible_Equity_Value / FCF.4FQ) %>% 
     
     mutate(Excess_Cash = cashAndCashEquivalents * 0.9 + shortTermInvestments) %>% 
     
     mutate(Net_Working_Capital = (totalCurrentAssets - Excess_Cash) - (totalCurrentLiabilities - shortTermDebt),
            
-           Tangible_Capital_Employed = totalAssets - (goodwillAndIntangibleAssets 
-                                                      + Excess_Cash + 
-                                                        totalCurrentLiabilities - 
-                                                        shortTermDebt)) %>% 
+           Tangible_Capital_Employed = totalAssets - (otherCurrentAssets + 
+                                                        otherNonCurrentAssets +
+                                                        goodwillAndIntangibleAssets +
+                                                        Excess_Cash) - 
+             (totalCurrentLiabilities - 
+                shortTermDebt - 
+                deferredRevenue - 
+                0.5 * otherCurrentLiabilities)
+    ) %>% 
     
     mutate(Return_On_Capital_Employed = EBIT.4FQ / Tangible_Capital_Employed,
            Net_Interest_Bearing_Debt = totalDebt + capitalLeaseObligations) %>% 
@@ -38,7 +122,7 @@ calculate_MF_ranking <- function(df){
     
     mutate(Earnings_Yield = EBIT.4FQ / Enterprise_Value) %>% 
     
-    select(date,symbol, companyName, mktCap, Step_1_mktCap_less_Net_Tangible, Step_2_over_fcf, Enterprise_Value, Earnings_Yield, Return_On_Capital_Employed,
+    select(date,symbol, companyName, mktCap, FCF_tangible_equity_value_multiplier, Net_Tangible_Equity_Value,  Earnings_Yield, Return_On_Capital_Employed,
            EBIT.4FQ, Tangible_Capital_Employed, Net_Working_Capital, Excess_Cash, everything()) %>% 
     ungroup()
   
@@ -47,9 +131,11 @@ calculate_MF_ranking <- function(df){
   return(df)
 }
 
+## 04 - Calculation of MF ranking
+
 EY_ROCE_ranking <- function(df){
   ## 01.2 - Calculation of ranking MF
-
+  
   df <- df %>%
     group_by(symbol) %>%
     arrange(desc(date)) %>%
@@ -93,7 +179,7 @@ EY_ROCE_ranking <- function(df){
 }
 
 
-# 02 - Analysis -----------------------------------------------------------
+# Ratio Analysis -----------------------------------------------------------
 
 ratio_analysis_chart <- function(financial_data_df){
   
