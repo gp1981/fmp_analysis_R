@@ -87,27 +87,22 @@ calculate_MF_ranking <- function(df){
   
   df <- excess_cash(df)
   
-  ## 03 - Calculation of MF Earnings Yield and Return on Capital
+  ## 03 - Calculation of FCF to Equity Net Premium
   
   df <- df %>% 
-    
-    
-    mutate(Net_Tangible_Equity = totalAssets - totalLiabilities - goodwillAndIntangibleAssets) %>% 
-    
-    mutate() %>%
-    
-    mutate(Net_Tangible_Equity_Value = mktCap - Net_Tangible_Equity,
+    mutate(Net_Tangible_Equity_book = totalAssets - totalLiabilities - 
+             goodwillAndIntangibleAssets,
            
-           FCF_tangible_equity_value_multiplier = Net_Tangible_Equity_Value / FCF.4FQ) %>% 
+           Equity_Net_Premium = mktCap - Net_Tangible_Equity_book,
+           
+           FCFtoEquity_Net_premium= Equity_Net_Premium / FCF.4FQ) %>% 
     
-    mutate(Excess_Cash = cashAndCashEquivalents * 0.9 + shortTermInvestments) %>% 
-    
-    mutate(Net_Working_Capital = (totalCurrentAssets - Excess_Cash) - (totalCurrentLiabilities - shortTermDebt),
+    mutate(Net_Working_Capital = (totalCurrentAssets - excess_cash) - (totalCurrentLiabilities - shortTermDebt),
            
            Tangible_Capital_Employed = totalAssets - (otherCurrentAssets + 
                                                         otherNonCurrentAssets +
                                                         goodwillAndIntangibleAssets +
-                                                        Excess_Cash) - 
+                                                        excess_cash) - 
              (totalCurrentLiabilities - 
                 shortTermDebt - 
                 deferredRevenue - 
@@ -122,10 +117,12 @@ calculate_MF_ranking <- function(df){
     
     mutate(Earnings_Yield = EBIT.4FQ / Enterprise_Value) %>% 
     
-    select(date,symbol, companyName, mktCap, FCF_tangible_equity_value_multiplier, Net_Tangible_Equity_Value,  Earnings_Yield, Return_On_Capital_Employed,
-           EBIT.4FQ, Tangible_Capital_Employed, Net_Working_Capital, Excess_Cash, everything()) %>% 
+    select(date,symbol, companyName, mktCap, FCFtoEquity_Net_premium, Equity_Net_Premium,  
+           Earnings_Yield, Return_On_Capital_Employed, EBIT.4FQ, Tangible_Capital_Employed,
+           Net_Working_Capital, excess_cash, everything()) %>% 
     ungroup()
   
+  ## 04 - Calculation of MF Earnings Yield and Return on Capital
   df <- EY_ROCE_ranking(df)
   
   return(df)
@@ -148,7 +145,7 @@ EY_ROCE_ranking <- function(df){
     mutate(Rank_Return_On_Capital_Employed = dplyr::row_number()) %>% 
     select(date,symbol, companyName, mktCap, Enterprise_Value, Earnings_Yield, Rank_Return_On_Capital_Employed,
            Return_On_Capital_Employed, EBIT.4FQ, Tangible_Capital_Employed, Net_Working_Capital, 
-           Excess_Cash, everything()) %>% 
+           excess_cash, everything()) %>% 
     ungroup()
   
   df <- df %>% 
@@ -157,7 +154,7 @@ EY_ROCE_ranking <- function(df){
     mutate(Rank_Earnings_Yield = dplyr::row_number()) %>% 
     select(date,symbol, companyName, mktCap, Enterprise_Value, Rank_Earnings_Yield, 
            Earnings_Yield, Rank_Return_On_Capital_Employed, Return_On_Capital_Employed, 
-           EBIT.4FQ, Tangible_Capital_Employed, Net_Working_Capital, Excess_Cash, 
+           EBIT.4FQ, Tangible_Capital_Employed, Net_Working_Capital, excess_cash, 
            everything())%>% 
     ungroup()
   
@@ -170,7 +167,7 @@ EY_ROCE_ranking <- function(df){
     mutate(Rank_EY_ROCE = dplyr::row_number()) %>%
     select(date,symbol, companyName, mktCap, Rank_EY_ROCE, Enterprise_Value, Rank_Earnings_Yield, 
            Earnings_Yield, Rank_Return_On_Capital_Employed, Return_On_Capital_Employed, 
-           EBIT.4FQ, Tangible_Capital_Employed, Net_Working_Capital, Excess_Cash, 
+           EBIT.4FQ, Tangible_Capital_Employed, Net_Working_Capital, excess_cash, 
            everything())%>% 
     ungroup()
   

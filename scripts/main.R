@@ -58,7 +58,7 @@ df_MF_rank <- calculate_MF_ranking(fundamentals_df)
 # 08 - Ratio analysis --------------------------------------------------------
 
 # Select companies for ratio analysis (max 5 companies e.g. peers)
-df_ratio <- fundamentals_df[1:48,]
+df_ratio <- fundamentals_df[1:4,]
 
 ratio_analysis_plot <- ratio_analysis_chart(df_ratio)
 
