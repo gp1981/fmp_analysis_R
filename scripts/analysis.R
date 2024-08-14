@@ -71,7 +71,11 @@ calculate_MF_ranking <- function(df){
                               width = 4, FUN = sum, align = "left", fill = NA),
       EBIT.4FQ = rollapply(operatingIncome,
                            width = 4, FUN = sum, align = "left", fill = NA),
-      FCF.4FQ = rollapply(freeCashFlow,
+      freeCashFlow_calculated = freeCashFlowPerShare * if_else(revenuePerShare != 0, 
+                                                               revenue / revenuePerShare, 
+                                                               NA_real_),
+      
+      FCF.4FQ = rollapply(freeCashFlow_calculated,
                           width = 4, FUN = sum, align = "left", fill = NA),
       Op_CashFlow.4FQ = rollapply(netCashProvidedByOperatingActivities,
                                   width = 4, FUN = sum, align = "left", fill = NA),

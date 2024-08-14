@@ -9,7 +9,7 @@ source('scripts/utils.R')
 source('scripts/data_retrieval.R')
 source('scripts/analysis.R')
 
-# 02 - Get stock data from fmp, S&P500, NASDAQ, DOW and Magic Formula ------------------------------------------
+# 02 - Get stock data S&P500, NASDAQ, DOW and Magic Formula ------------------------------------------
 symbols_df <- get_stock_data_df(API_Key = API_Key)
 MF_df <- get_MF_data_df(mktCap_limit_lower = 1000, mktCap_limit_upper = 20000, mktCap_step_M = 100)
 
@@ -25,13 +25,14 @@ symbols_df_MF <- MF_df %>%
   rename(name = name.y) %>% 
   select(name, everything())
 
-# 05 - Get fundamentals and quotes from fmp of selected stocks -------------------------
+# 05 - Get fundamentals of selected stocks -------------------------
 fundamentals_df <- get_fundamentals_data_df(symbols_df_MF, period = "quarter", 
                                             limit = 12, API_Key = API_Key)
 
+# 06 - Get price and quote data of selected stocks -------------------------
+quote_data_df <- get_quote_data_df(symbols_df_MF, API_Key = API_Key)
 price_history_data_df <- get_price_history_data_df(symbols_df_MF, startDate = historical_dates$date_20Y, endDate = today(), API_Key = API_Key)
 
-quote_data_df <- get_quote_data_df(symbols_df_MF, API_Key = API_Key)
 
 # 0 - Get filing as reported from fmp (WIP) ------------------
 # financial_statements_as_reported_list <- get_financial_statements_as_reported_list(symbols_df, period = "quarter", limit = 12, API_Key = API_Key)
@@ -50,10 +51,11 @@ quote_data_df <- get_quote_data_df(symbols_df_MF, API_Key = API_Key)
 # 
 # 
 # 
-export_excel_data(fundamentals_df)
 
 # 07 - Magic Formula Ranking ---------------------------------------------
-df_MF_rank <- calculate_MF_ranking(fundamentals_df)
+data_df <- left_join(fundamentals_df, quote_data_df)
+df_MF_rank <- calculate_MF_ranking(data_df)
+export_excel_data(df_MF_rank)
 
 # 08 - Ratio analysis --------------------------------------------------------
 
