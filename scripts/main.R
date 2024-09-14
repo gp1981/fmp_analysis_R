@@ -75,6 +75,6 @@ ratio_analysis_plot$debt_coverage_plot
 
 
 
-# 09 - Valuation ----------------------------------------------------------
-
+# 09 - Capex Equity growth ----------------------------------------------------------
+capex_equity_growth_plot(fundamentals_df)
 

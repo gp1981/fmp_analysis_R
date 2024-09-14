@@ -9,7 +9,7 @@
 packages <- c("httr","jsonlite","tidyverse", "openxlsx", "lubridate","tidyquant",
               "ggthemes","ggplot2","openxlsx","dplyr","zoo","ggpubr","foreach", 
               "progress", "ggplot2", "kableExtra", "knitr", "openxlsx", "zoo", 
-              "rvest")
+              "rvest", "scales")
 
 for (package in packages) {
   if (!(package %in% installed.packages())) {

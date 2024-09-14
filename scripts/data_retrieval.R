@@ -200,7 +200,7 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
   
   # Prepare dataframe with necessary columns
   symbols_df <- symbols_df %>%
-    select(-c(name, price))
+    select(-any_of(c("name", "price")))
   
   # Combine dataframes
   fundamentals <- fundamentals %>% 
