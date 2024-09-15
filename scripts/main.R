@@ -19,14 +19,14 @@ hist_NASDAQ_df <- get_hist_index_df(index = "NASDAQ", API_Key)
 hist_DOW_df <- get_hist_index_df(index = "DOW", API_Key)
 
 # 04 - Select companies from www.magicformulainvesting.com (MF) ----------------
-symbols_df_MF <- MF_df %>% 
+symbols_df <- MF_df %>% 
   left_join(symbols_df, by = "symbol") %>% 
   select(-name.x) %>% 
   rename(name = name.y) %>% 
   select(name, everything())
 
 # 05 - Get fundamentals of selected stocks -------------------------
-fundamentals_df <- get_fundamentals_data_df(symbols_df_MF, period = "quarter", 
+fundamentals_df <- get_fundamentals_data_df(symbols_df, period = "quarter", 
                                             limit = 12, API_Key = API_Key)
 
 # 06 - Get price and quote data of selected stocks -------------------------

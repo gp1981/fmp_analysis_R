@@ -151,7 +151,14 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
   
   CF <- CF %>% 
     mutate(across(c(date,fillingDate,acceptedDate), as.Date)) %>% 
-    mutate_at(vars(calendarYear), as.integer) 
+    mutate_at(vars(calendarYear), as.integer) %>% 
+    rename(
+      change_inventory = inventory,
+      change_accountsReceivables = accountsReceivables,
+      change_accountsPayables = accountsPayables,
+      change_otherWorkingCapital = otherWorkingCapital,
+      change_otherNonCashItems = otherNonCashItems
+    )
   
   Ratios <- Ratios %>% 
     mutate_at(vars(date), as.Date) %>% 
@@ -186,15 +193,26 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
   
   # Perform joins step-by-step and inspect the results
   fundamentals <- Profile %>% 
-    left_join(IS) %>%
-    left_join(BS) %>%
-    left_join(CF) %>%
-    left_join(KeyMetrics) %>%
+    left_join(CF)
+  
+  fundamentals <- fundamentals %>% 
+    left_join(IS, by = c("symbol","date")) %>% 
+    select(-ends_with(".x"), -ends_with(".y"))
+  
+  fundamentals <- fundamentals %>% 
+    left_join(BS, by = c("symbol","date")) %>% 
+    select(-ends_with(".x"), -ends_with(".y"))
+  
+  fundamentals <- fundamentals %>% 
+    left_join(KeyMetrics, by = c("symbol","date")) %>% 
+    select(-ends_with(".x"), -ends_with(".y"))
+  
+  fundamentals <- fundamentals %>% 
     left_join(Ratios)
   
   # Calculate correct dividends
-  fundamentals <- fundamentals %>% 
-    mutate(dividend_paid_calculated = (dividendYield) * (marketCap))  
+  # fundamentals <- fundamentals %>% 
+  #   mutate(dividend_paid_calculated = (dividendYield) * (marketCap))  
   
   ## Prepare output ----------
   

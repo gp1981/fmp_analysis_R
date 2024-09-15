@@ -416,7 +416,8 @@ capex_equity_growth_plot <- function(fundamentals_df) {
     
     # Step 2: Calculate Equity (no TTM, just sum of total equity and dividends)
     fundamentals_df <- fundamentals_df %>%
-      mutate(equity = totalEquity + dividend_paid_calculated)
+      mutate(equity = totalEquity + dividendsPaid + 
+               commonStockRepurchased - commonStockIssued)
     
     # Step 3: Calculate Equity Increases over 2, 3, 4, 6 years
     fundamentals_df <- fundamentals_df %>%
