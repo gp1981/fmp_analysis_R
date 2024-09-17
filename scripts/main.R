@@ -25,9 +25,12 @@ symbols_df <- MF_df %>%
   rename(name = name.y) %>% 
   select(name, everything())
 
-# 05 - Get fundamentals of selected stocks -------------------------
+# 05 - Select manually stocks -------------------------------------------
+symbols_df <- tibble(symbol = c("CMC","NUE")) 
+
+# 06 - Get fundamentals of selected stocks -------------------------
 fundamentals_df <- get_fundamentals_data_df(symbols_df, period = "quarter", 
-                                            limit = 12, API_Key = API_Key)
+                                            limit = 60, API_Key = API_Key)
 
 # 06 - Get price and quote data of selected stocks -------------------------
 quote_data_df <- get_quote_data_df(symbols_df_MF, API_Key = API_Key)
@@ -60,7 +63,7 @@ export_excel_data(df_MF_rank)
 # 08 - Ratio analysis --------------------------------------------------------
 
 # Select companies for ratio analysis (max 5 companies e.g. peers)
-df_ratio <- fundamentals_df[1:4,]
+df_ratio <- fundamentals_df
 
 ratio_analysis_plot <- ratio_analysis_chart(df_ratio)
 
