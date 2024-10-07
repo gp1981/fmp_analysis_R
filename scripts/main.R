@@ -19,7 +19,7 @@ hist_NASDAQ_df <- get_hist_index_df(index = "NASDAQ", API_Key)
 hist_DOW_df <- get_hist_index_df(index = "DOW", API_Key)
 
 # 04 - Select companies from www.magicformulainvesting.com (MF) ----------------
-symbols_df <- MF_df %>% 
+symbols_df_MF <- MF_df %>% 
   left_join(symbols_df, by = "symbol") %>% 
   select(-name.x) %>% 
   rename(name = name.y) %>% 

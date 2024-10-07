@@ -35,7 +35,7 @@ excess_cash <- function(df) {
     mutate(
       excess.cash = case_when(
         cashAndShortTermInvestments > cashAndCashEquivalents ~ cashAndShortTermInvestments - cashAndCashEquivalents - 
-          (dividend_paid_calculated + commonStockRepurchased),
+          (dividendsPaid + commonStockRepurchased),
         cashAndShortTermInvestments <= cashAndCashEquivalents & revenue > 0 ~ as.numeric(revenue) * 0.05,
         TRUE ~ 0
       )
