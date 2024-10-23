@@ -69,7 +69,7 @@ export_excel_data <- function(DF1) {
   
   # Save workbook
   saveWorkbook(wb,
-               file = paste0("data/dataset", ".xlsx"),
+               file = paste0("data/dataset_", format(Sys.Date(), "%Y%m%d"), ".xlsx"), 
                overwrite = TRUE)
   # Check https://cran.r-project.org/web/packages/openxlsx/openxlsx.pdf
 }

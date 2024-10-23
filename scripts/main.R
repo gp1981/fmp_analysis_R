@@ -26,15 +26,16 @@ symbols_df_MF <- MF_df %>%
   select(name, everything())
 
 # 05 - Select manually stocks -------------------------------------------
-symbols_df <- tibble(symbol = c("CMC","NUE")) 
+# symbols_df <- tibble(symbol = c("CMC","NUE")) 
+symbols_df <- symbols_df_MF
 
 # 06 - Get fundamentals of selected stocks -------------------------
 fundamentals_df <- get_fundamentals_data_df(symbols_df, period = "quarter", 
                                             limit = 60, API_Key = API_Key)
 
 # 06 - Get price and quote data of selected stocks -------------------------
-quote_data_df <- get_quote_data_df(symbols_df_MF, API_Key = API_Key)
-price_history_data_df <- get_price_history_data_df(symbols_df_MF, startDate = historical_dates$date_20Y, endDate = today(), API_Key = API_Key)
+quote_data_df <- get_quote_data_df(symbols_df, API_Key = API_Key)
+price_history_data_df <- get_price_history_data_df(symbols_df, startDate = historical_dates$date_20Y, endDate = today(), API_Key = API_Key)
 
 
 # 0 - Get filing as reported from fmp (WIP) ------------------

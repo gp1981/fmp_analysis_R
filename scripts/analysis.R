@@ -121,8 +121,12 @@ calculate_MF_ranking <- function(df){
     
     mutate(Earnings_Yield = EBIT.4FQ / Enterprise_Value) %>% 
     
-    select(date,symbol, companyName, mktCap, FCFtoEquity_Net_premium, Equity_Net_Premium,  
-           Earnings_Yield, Return_On_Capital_Employed, EBIT.4FQ, Tangible_Capital_Employed,
+    select(date,symbol, companyName,threshold_mktCap,TopGreenblatt,industry, 
+           Market_Cap_Millions, Earnings_Yield, Return_On_Capital_Employed,
+           priceEarningsRatioTTM, priceBookValueRatioTTM,
+           totalDebtToCapitalizationTTM, debtRatioTTM, debtEquityRatioTTM,
+           FCFtoEquity_Net_premium, Equity_Net_Premium,  
+           EBIT.4FQ, Tangible_Capital_Employed,
            Net_Working_Capital, excess_cash, everything()) %>% 
     ungroup()
   
@@ -169,10 +173,14 @@ EY_ROCE_ranking <- function(df){
   df <- df %>% 
     arrange(Rank_EY_ROCE_absolute) %>% 
     mutate(Rank_EY_ROCE = dplyr::row_number()) %>%
-    select(date,symbol, companyName, mktCap, Rank_EY_ROCE, Enterprise_Value, Rank_Earnings_Yield, 
-           Earnings_Yield, Rank_Return_On_Capital_Employed, Return_On_Capital_Employed, 
-           EBIT.4FQ, Tangible_Capital_Employed, Net_Working_Capital, excess_cash, 
-           everything())%>% 
+    select(date,symbol, companyName,threshold_mktCap,TopGreenblatt,industry, 
+           Market_Cap_Millions,Rank_EY_ROCE, Earnings_Yield, Return_On_Capital_Employed,
+           priceEarningsRatioTTM, priceBookValueRatioTTM,
+           totalDebtToCapitalizationTTM, debtRatioTTM, debtEquityRatioTTM,
+           FCFtoEquity_Net_premium, Equity_Net_Premium,  
+           EBIT.4FQ, Tangible_Capital_Employed,
+           Net_Working_Capital, excess_cash, everything()
+           )%>% 
     ungroup()
   
   

@@ -77,7 +77,7 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
   API_CashFlow_path_base <- 'https://financialmodelingprep.com/api/v3/cash-flow-statement/'
   API_KeyMetrics_path_base <- 'https://financialmodelingprep.com/api/v3/key-metrics/'
   API_Profile_path_base <- 'https://financialmodelingprep.com/api/v3/profile/'
-  API_Ratio_path_base <- 'https://financialmodelingprep.com/api/v3/ratios/'
+  API_Ratio_path_base <- 'https://financialmodelingprep.com/api/v3/ratios-ttm/'
   
   if (period == "quarter") {
     API_IncomeStatement_path_suffix <- '?period=quarter'
@@ -160,10 +160,10 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
       change_otherNonCashItems = otherNonCashItems
     )
   
-  Ratios <- Ratios %>% 
-    mutate_at(vars(date), as.Date) %>% 
-    mutate_at(vars(calendarYear), as.integer) 
-  
+  # Ratios <- Ratios %>% 
+  #   mutate_at(vars(date), as.Date) %>% 
+  #   mutate_at(vars(calendarYear), as.integer) 
+  # 
   KeyMetrics <- KeyMetrics %>% 
     mutate_at(vars(date), as.Date) %>% 
     mutate_at(vars(calendarYear), as.integer) 
@@ -180,7 +180,7 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
   stopifnot("symbol" %in% colnames(CF))
   stopifnot("symbol" %in% colnames(KeyMetrics))
   stopifnot("symbol" %in% colnames(Profile))
-  stopifnot("symbol" %in% colnames(Ratios))
+  # stopifnot("symbol" %in% colnames(Ratios))
   
   # Check for NA values in the key columns
   sum(is.na(symbols_df$symbol))
@@ -189,9 +189,20 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
   sum(is.na(CF$symbol))
   sum(is.na(KeyMetrics$symbol))
   sum(is.na(Profile$symbol))
-  sum(is.na(Ratios$symbol))
+  # sum(is.na(Ratios$symbol))
   
   # Perform joins step-by-step and inspect the results
+  
+  # Add artificial row identifier to both DataFrames
+  Profile$row_id <- seq_len(nrow(Profile))
+  Ratios$row_id <- seq_len(nrow(Ratios))
+  
+  Profile <- Profile %>% 
+    left_join(Ratios)
+  
+  Profile <- Profile %>% 
+    select(-row_id)
+  
   fundamentals <- Profile %>% 
     left_join(CF)
   
@@ -207,8 +218,8 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
     left_join(KeyMetrics, by = c("symbol","date")) %>% 
     select(-ends_with(".x"), -ends_with(".y"))
   
-  fundamentals <- fundamentals %>% 
-    left_join(Ratios)
+  # fundamentals <- fundamentals %>% 
+  #   left_join(Ratios)
   
   # Calculate correct dividends
   # fundamentals <- fundamentals %>% 
