@@ -121,11 +121,12 @@ calculate_MF_ranking <- function(df){
     
     mutate(Earnings_Yield = EBIT.4FQ / Enterprise_Value) %>% 
     
-    select(date,symbol, companyName,threshold_mktCap,TopGreenblatt,industry, 
-           Market_Cap_Millions, Earnings_Yield, Return_On_Capital_Employed,
+    select(date,symbol,TopGreenblatt, threshold_mktCap, companyName,
+           price, Market_Cap_Millions, industry, 
+            Earnings_Yield, Return_On_Capital_Employed,
            priceEarningsRatioTTM, priceBookValueRatioTTM,
-           totalDebtToCapitalizationTTM, debtRatioTTM, debtEquityRatioTTM,
            FCFtoEquity_Net_premium, Equity_Net_Premium,  
+           debtToEquityTTM, debtToAssetsTTM, longTermDebtToCapitalizationTTM,
            EBIT.4FQ, Tangible_Capital_Employed,
            Net_Working_Capital, excess_cash, everything()) %>% 
     ungroup()
