@@ -71,11 +71,7 @@ calculate_MF_ranking <- function(df){
                               width = 4, FUN = sum, align = "left", fill = NA),
       EBIT.4FQ = rollapply(operatingIncome,
                            width = 4, FUN = sum, align = "left", fill = NA),
-      freeCashFlow_calculated = freeCashFlowPerShare * if_else(revenuePerShare != 0, 
-                                                               revenue / revenuePerShare, 
-                                                               NA_real_),
-      
-      FCF.4FQ = rollapply(freeCashFlow_calculated,
+      FCF.4FQ = rollapply(as.numeric(freeCashFlow),
                           width = 4, FUN = sum, align = "left", fill = NA),
       Op_CashFlow.4FQ = rollapply(netCashProvidedByOperatingActivities,
                                   width = 4, FUN = sum, align = "left", fill = NA),
@@ -119,20 +115,19 @@ calculate_MF_ranking <- function(df){
     mutate(Enterprise_Value = mktCap + Net_Interest_Bearing_Debt + 
              minorityInterest + preferredStock) %>% 
     
-    mutate(Earnings_Yield = EBIT.4FQ / Enterprise_Value) %>% 
+    mutate(Earnings_Yield = EBIT.4FQ / Enterprise_Value)
     
-    select(date,symbol,TopGreenblatt, threshold_mktCap, companyName,
-           price, Market_Cap_Millions, industry, 
-            Earnings_Yield, Return_On_Capital_Employed,
-           priceEarningsRatioTTM, priceBookValueRatioTTM,
-           FCFtoEquity_Net_premium, Equity_Net_Premium,  
-           debtToEquityTTM, debtToAssetsTTM, longTermDebtToCapitalizationTTM,
-           EBIT.4FQ, Tangible_Capital_Employed,
-           Net_Working_Capital, excess_cash, everything()) %>% 
-    ungroup()
-  
   ## 04 - Calculation of MF Earnings Yield and Return on Capital
   df <- EY_ROCE_ranking(df)
+  
+  df <- df %>% 
+    select(date, symbol, companyName, 
+           country, price, Market_Cap_Millions,Rank_EY_ROCE, Earnings_Yield, 
+           Return_On_Capital_Employed, priceEarningsRatioTTM, priceBookValueRatioTTM, pbRatioTTM,
+           totalDebtToCapitalizationTTM, debtRatioTTM, debtEquityRatioTTM,  FCFtoEquity_Net_premium,
+           currentRatioTTM, quickRatioTTM, cashRatioTTM, returnOnEquityTTM, returnOnAssetsTTM, returnOnCapitalEmployedTTM, 
+           everything()) %>% 
+    arrange(Rank_EY_ROCE)
   
   return(df)
 }
@@ -181,7 +176,7 @@ EY_ROCE_ranking <- function(df){
            FCFtoEquity_Net_premium, Equity_Net_Premium,  
            EBIT.4FQ, Tangible_Capital_Employed,
            Net_Working_Capital, excess_cash, everything()
-           )%>% 
+    )%>% 
     ungroup()
   
   
@@ -414,57 +409,57 @@ ratio_analysis_chart <- function(financial_data_df){
 # Capex vs Equity growth --------------------------------------------------
 
 capex_equity_growth_plot <- function(fundamentals_df) {
-   
-    # Step 1: Calculate Capex (TTM)
-    fundamentals_df <- fundamentals_df %>%
-      group_by(symbol) %>% 
-      arrange(date) %>%
-      mutate(capex = capexToRevenue * revenue,
-             capex_TTM = rollapply(capex, width = 4, FUN = sum, fill = NA, align = "right")) %>% 
-    ungroup()
-    
-    # Step 2: Calculate Equity (no TTM, just sum of total equity and dividends)
-    fundamentals_df <- fundamentals_df %>%
-      mutate(equity = totalEquity + dividendsPaid + 
-               commonStockRepurchased - commonStockIssued)
-    
-    # Step 3: Calculate Equity Increases over 2, 3, 4, 6 years
-    fundamentals_df <- fundamentals_df %>%
-      group_by(symbol) %>% 
-      mutate(
-        equity_increase_2y = lead(equity, 8) - equity,
-        equity_increase_3y = lead(equity, 12) - equity,
-        equity_increase_4y = lead(equity, 16) - equity,
-        equity_increase_6y = lead(equity, 24) - equity
-      ) %>% 
-      ungroup()
-    
-    
-    # Step 4: Calculate Ratios using Capex TTM
-    fundamentals_df <- fundamentals_df %>%
-      group_by(symbol) %>% 
-      mutate(
-        ratio_2y = equity_increase_2y / capex_TTM,
-        ratio_3y = equity_increase_3y / capex_TTM,
-        ratio_4y = equity_increase_4y / capex_TTM,
-        ratio_6y = equity_increase_6y / capex_TTM
-      ) %>% 
-      ungroup()
-    
-    # Step 5: Prepare data for plotting
-    plot_data <- fundamentals_df %>%
-      select(date, symbol, ratio_2y, ratio_3y, ratio_4y, ratio_6y) %>%
-      pivot_longer(cols = starts_with("ratio_"), names_to = "lag", values_to = "ratio") %>%
-      mutate(lag_year = as.numeric(sub("ratio_", "", lag)))
-    
-    # Step 6: Plotting the ratios as percentages
-    ggplot(plot_data, aes(x = date, y = ratio, color = as.factor(lag))) +
-      geom_point(size = 2) +
-      geom_line() +
-      labs(title = "Ratio of Total Equity (incl. dividend paid) Increase to Capex",
-           y = "Equity Increase / Capex ",
-           color = "Lag (Years)") +
-      theme_minimal(base_size = 14) + 
-      facet_wrap(~ symbol, scales = "fixed", ncol = 1)
-  }
   
+  # Step 1: Calculate Capex (TTM)
+  fundamentals_df <- fundamentals_df %>%
+    group_by(symbol) %>% 
+    arrange(date) %>%
+    mutate(capex = capexToRevenue * revenue,
+           capex_TTM = rollapply(capex, width = 4, FUN = sum, fill = NA, align = "right")) %>% 
+    ungroup()
+  
+  # Step 2: Calculate Equity (no TTM, just sum of total equity and dividends)
+  fundamentals_df <- fundamentals_df %>%
+    mutate(equity = totalEquity + dividendsPaid + 
+             commonStockRepurchased - commonStockIssued)
+  
+  # Step 3: Calculate Equity Increases over 2, 3, 4, 6 years
+  fundamentals_df <- fundamentals_df %>%
+    group_by(symbol) %>% 
+    mutate(
+      equity_increase_2y = lead(equity, 8) - equity,
+      equity_increase_3y = lead(equity, 12) - equity,
+      equity_increase_4y = lead(equity, 16) - equity,
+      equity_increase_6y = lead(equity, 24) - equity
+    ) %>% 
+    ungroup()
+  
+  
+  # Step 4: Calculate Ratios using Capex TTM
+  fundamentals_df <- fundamentals_df %>%
+    group_by(symbol) %>% 
+    mutate(
+      ratio_2y = equity_increase_2y / capex_TTM,
+      ratio_3y = equity_increase_3y / capex_TTM,
+      ratio_4y = equity_increase_4y / capex_TTM,
+      ratio_6y = equity_increase_6y / capex_TTM
+    ) %>% 
+    ungroup()
+  
+  # Step 5: Prepare data for plotting
+  plot_data <- fundamentals_df %>%
+    select(date, symbol, ratio_2y, ratio_3y, ratio_4y, ratio_6y) %>%
+    pivot_longer(cols = starts_with("ratio_"), names_to = "lag", values_to = "ratio") %>%
+    mutate(lag_year = as.numeric(sub("ratio_", "", lag)))
+  
+  # Step 6: Plotting the ratios as percentages
+  ggplot(plot_data, aes(x = date, y = ratio, color = as.factor(lag))) +
+    geom_point(size = 2) +
+    geom_line() +
+    labs(title = "Ratio of Total Equity (incl. dividend paid) Increase to Capex",
+         y = "Equity Increase / Capex ",
+         color = "Lag (Years)") +
+    theme_minimal(base_size = 14) + 
+    facet_wrap(~ symbol, scales = "fixed", ncol = 1)
+}
+
