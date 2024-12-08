@@ -201,37 +201,37 @@ ratio_analysis_chart <- function(financial_data_df){
   }
   
   # List of ratio columns to process
-  financial_data_df_columns <- c("currentRatio", "quickRatio", "cashRatio", 
-                                 "daysOfSalesOutstanding", "daysOfInventoryOutstanding", 
-                                 "daysOfPayablesOutstanding", "operatingCycle", 
-                                 "cashConversionCycle", "debtEquityRatio", 
-                                 "totalDebtToCapitalization", "longTermDebtToCapitalization", 
-                                 "shortTermCoverageRatios", "cashFlowToDebtRatio")
+  financial_data_df_columns <- c("currentRatioTTM", "quickRatioTTM", "cashRatioTTM", 
+                                 "daysOfSalesOutstandingTTM", "daysOfInventoryOutstandingTTM", 
+                                 "daysOfPayablesOutstandingTTM", "operatingCycleTTM", 
+                                 "cashConversionCycleTTM", "debtEquityRatioTTM", 
+                                 "totalDebtToCapitalizationTTM", "longTermDebtToCapitalizationTTM", 
+                                 "shortTermCoverageRatiosTTM", "cashFlowToDebtRatioTTM")
   
   # Reshape the data to long format
   current_assets_ratio_data_long <- financial_data_df %>%
-    select(symbol, date, currentRatio, quickRatio, cashRatio) %>%
-    pivot_longer(cols = c(currentRatio, quickRatio, cashRatio),
+    select(symbol, date, currentRatioTTM, quickRatioTTM, cashRatioTTM) %>%
+    pivot_longer(cols = c(currentRatioTTM, quickRatioTTM, cashRatioTTM),
                  names_to = "ratio_type", 
                  values_to = "value")
   
   cash_conversion_ratio_data_long <- financial_data_df %>%
-    select(symbol, date, daysOfSalesOutstanding, daysOfInventoryOutstanding, 
-           daysOfPayablesOutstanding, operatingCycle, cashConversionCycle) %>%
-    pivot_longer(cols = c(daysOfSalesOutstanding, daysOfInventoryOutstanding, 
-                          daysOfPayablesOutstanding, operatingCycle, cashConversionCycle),
+    select(symbol, date, daysOfSalesOutstandingTTM, daysOfInventoryOutstandingTTM, 
+           daysOfPayablesOutstandingTTM, operatingCycleTTM, cashConversionCycleTTM) %>%
+    pivot_longer(cols = c(daysOfSalesOutstandingTTM, daysOfInventoryOutstandingTTM, 
+                          daysOfPayablesOutstandingTTM, operatingCycleTTM, cashConversionCycleTTM),
                  names_to = "ratio_type", 
                  values_to = "value")
   
   debt_ratio_data_long <- financial_data_df %>%
-    select(symbol, date, debtEquityRatio, totalDebtToCapitalization, longTermDebtToCapitalization) %>%
-    pivot_longer(cols = c(debtEquityRatio, totalDebtToCapitalization, longTermDebtToCapitalization),
+    select(symbol, date, debtEquityRatioTTM, totalDebtToCapitalizationTTM, longTermDebtToCapitalizationTTM) %>%
+    pivot_longer(cols = c(debtEquityRatioTTM, totalDebtToCapitalizationTTM, longTermDebtToCapitalizationTTM),
                  names_to = "ratio_type", 
                  values_to = "value")
   
   debt_coverage_data_long <- financial_data_df %>%
-    select(symbol, date, shortTermCoverageRatios, cashFlowToDebtRatio) %>%
-    pivot_longer(cols = c(shortTermCoverageRatios, cashFlowToDebtRatio),
+    select(symbol, date, shortTermCoverageRatiosTTM, cashFlowToDebtRatioTTM) %>%
+    pivot_longer(cols = c(shortTermCoverageRatiosTTM, cashFlowToDebtRatioTTM),
                  names_to = "ratio_type", 
                  values_to = "value")
   
@@ -311,16 +311,16 @@ ratio_analysis_chart <- function(financial_data_df){
          title = "Trends of Financial Ratios Over Time",
          subtitle = "Cash conversion ratio by Symbol",
          color = "Ratio Type") +
-    scale_color_manual(values = c("daysOfSalesOutstanding" = "#0072B2",
-                                  "daysOfInventoryOutstanding" = "#009E73",
-                                  "daysOfPayablesOutstanding" = "#D55E00",
-                                  "operatingCycle" = "#CC79A7",
-                                  "cashConversionCycle" = "#E69F00"),
-                       labels = c("daysOfSalesOutstanding" = "Days of Sales Outstanding (DSO)", 
-                                  "daysOfInventoryOutstanding" = "Days of Inventory Outstanding (DIO)", 
-                                  "daysOfPayablesOutstanding" = "Days of Payable Outstanding (DPO)",
-                                  "operatingCycle" = "Operating Cycle (DSO + DIO)",
-                                  "cashConversionCycle" = "Cash Conversion Cycle (DSO + DIO + DPO)")) +
+    scale_color_manual(values = c("daysOfSalesOutstandingTTM" = "#0072B2",
+                                  "daysOfInventoryOutstandingTTM" = "#009E73",
+                                  "daysOfPayablesOutstandingTTM" = "#D55E00",
+                                  "operatingCycleTTM" = "#CC79A7",
+                                  "cashConversionCycleTTM" = "#E69F00"),
+                       labels = c("daysOfSalesOutstandingTTM" = "Days of Sales OutstandingTTM (DSO)", 
+                                  "daysOfInventoryOutstandingTTM" = "Days of Inventory OutstandingTTM (DIO)", 
+                                  "daysOfPayablesOutstandingTTM" = "Days of Payable OutstandingTTM (DPO)",
+                                  "operatingCycleTTM" = "Operating CycleTTM (DSO + DIO)",
+                                  "cashConversionCycleTTM" = "Cash Conversion CycleTTM (DSO + DIO + DPO)")) +
     scale_y_continuous(limits = c(min(cash_conversion_iqr_limits$ymin, na.rm = TRUE) * 0.8, 
                                   max(cash_conversion_iqr_limits$ymax, na.rm = TRUE) * 0.8)) +
     theme_minimal() +
@@ -346,12 +346,12 @@ ratio_analysis_chart <- function(financial_data_df){
          title = "Trends of Financial Ratios Over Time",
          subtitle = "Debt ratios by Symbol",
          color = "Ratio Type") +
-    scale_color_manual(values = c("debtEquityRatio" = "#0072B2",
-                                  "totalDebtToCapitalization" = "#009E73",
-                                  "longTermDebtToCapitalization" = "#D55E00"),
-                       labels = c("debtEquityRatio" = "Debt to Equity (Total Liabilities / Total Equity)",
-                                  "totalDebtToCapitalization" = "Total Debt to Capitalization (Total Debt / (Total Debt + Total Equity))", 
-                                  "longTermDebtToCapitalization" = "Long Term Capitalization (Long Term Debt / (Long Term Debt + Total Equity))")) + 
+    scale_color_manual(values = c("debtEquityRatioTTM" = "#0072B2",
+                                  "totalDebtToCapitalizationTTM" = "#009E73",
+                                  "longTermDebtToCapitalizationTTM" = "#D55E00"),
+                       labels = c("debtEquityRatioTTM" = "Debt to EquityTTM (Total Liabilities / Total Equity)",
+                                  "totalDebtToCapitalizationTTM" = "Total Debt to CapitalizationTTM (Total Debt / (Total Debt + Total Equity))", 
+                                  "longTermDebtToCapitalizationTTM" = "Long Term CapitalizationTTM (Long Term Debt / (Long Term Debt + Total Equity))")) + 
     scale_y_continuous(limits = c(min(debt_ratio_iqr_limits$ymin, na.rm = TRUE) * 0.8, 
                                   max(debt_ratio_iqr_limits$ymax, na.rm = TRUE) * 0.8)) +
     theme_minimal() +
@@ -375,10 +375,10 @@ ratio_analysis_chart <- function(financial_data_df){
          title = "Trends of Debt Coverage Over Time",
          subtitle = "Debt coverage by Symbol",
          color = "Ratio Type") +
-    scale_color_manual(values = c("shortTermCoverageRatios" = "#0072B2", 
-                                  "cashFlowToDebtRatio" = "#E69F00"),
-                       labels = c("shortTermCoverageRatios" = "Short Term Coverage Ratio (Operating Cash Flow / Short Term Debt)",
-                                  "cashFlowToDebtRatio" =  "Cash Flow to Debt Ratio (Operating Cash Flow / Total Debt)")) + 
+    scale_color_manual(values = c("shortTermCoverageRatiosTTM" = "#0072B2", 
+                                  "cashFlowToDebtRatioTTM" = "#E69F00"),
+                       labels = c("shortTermCoverageRatiosTTM" = "Short Term Coverage Ratio (Operating Cash Flow / Short Term Debt)",
+                                  "cashFlowToDebtRatioTTM" =  "Cash Flow to Debt Ratio (Operating Cash Flow / Total Debt)")) + 
     scale_y_continuous(limits = c(min(debt_coverage_iqr_limits$ymin, na.rm = TRUE) * 0.3, 
                                   max(debt_coverage_iqr_limits$ymax, na.rm = TRUE) * 0.3)) +
     theme_minimal() +
@@ -414,23 +414,41 @@ capex_equity_growth_plot <- function(fundamentals_df) {
   fundamentals_df <- fundamentals_df %>%
     group_by(symbol) %>% 
     arrange(date) %>%
-    mutate(capex = capexToRevenue * revenue,
+    mutate(capex = capexToRevenueTTM * revenue,
            capex_TTM = rollapply(capex, width = 4, FUN = sum, fill = NA, align = "right")) %>% 
     ungroup()
   
   # Step 2: Calculate Equity (no TTM, just sum of total equity and dividends)
   fundamentals_df <- fundamentals_df %>%
-    mutate(equity = totalEquity + dividendsPaid + 
-             commonStockRepurchased - commonStockIssued)
+    group_by(symbol) %>% 
+    arrange(date) %>% 
+    mutate(
+      # Get the first (oldest) value of totalStockholdersEquity
+      initial_equity = first(totalStockholdersEquity),
+      
+      # Calculate cumulative sums for required fields up to each row
+      cum_dividends = cumsum(dividendsPaid),
+      cum_issued = cumsum(commonStockIssued),
+      cum_repurchased = cumsum(commonStockRepurchased),
+      
+      
+      # Calculate full equity using the first value of totalStockholdersEquity
+      full_equity = initial_equity + (-1) * cum_dividends - cum_issued + (-1) * cum_repurchased
+    ) %>% 
+    ungroup()
   
-  # Step 3: Calculate Equity Increases over 2, 3, 4, 6 years
+  # Step 3: Calculate Equity Increases  2, 3, 4, 6 years prior
   fundamentals_df <- fundamentals_df %>%
     group_by(symbol) %>% 
+    arrange(desc(date)) %>% 
     mutate(
-      equity_increase_2y = lead(equity, 8) - equity,
-      equity_increase_3y = lead(equity, 12) - equity,
-      equity_increase_4y = lead(equity, 16) - equity,
-      equity_increase_6y = lead(equity, 24) - equity
+      equity_increase_annual = full_equity - lead(full_equity, 4),
+      
+      capex_TTM_2y = lead(capex_TTM,8),
+      capex_TTM_3y = lead(capex_TTM,12),
+      capex_TTM_4y = lead(capex_TTM,16),
+      capex_TTM_8y = lead(capex_TTM,32)
+      
     ) %>% 
     ungroup()
   
@@ -439,27 +457,124 @@ capex_equity_growth_plot <- function(fundamentals_df) {
   fundamentals_df <- fundamentals_df %>%
     group_by(symbol) %>% 
     mutate(
-      ratio_2y = equity_increase_2y / capex_TTM,
-      ratio_3y = equity_increase_3y / capex_TTM,
-      ratio_4y = equity_increase_4y / capex_TTM,
-      ratio_6y = equity_increase_6y / capex_TTM
+      full_Equity_increase_capex_2y = equity_increase_annual / capex_TTM_2y,
+      full_Equity_increase_capex_3y = equity_increase_annual / capex_TTM_3y,
+      full_Equity_increase_capex_4y = equity_increase_annual / capex_TTM_4y,
+      full_Equity_increase_capex_8y = equity_increase_annual / capex_TTM_8y
     ) %>% 
     ungroup()
   
-  # Step 5: Prepare data for plotting
-  plot_data <- fundamentals_df %>%
-    select(date, symbol, ratio_2y, ratio_3y, ratio_4y, ratio_6y) %>%
-    pivot_longer(cols = starts_with("ratio_"), names_to = "lag", values_to = "ratio") %>%
-    mutate(lag_year = as.numeric(sub("ratio_", "", lag)))
+  # Function to replace outliers in a column with NA
+  replace_outliers_with_na <- function(x) {
+    Q1 <- quantile(x, 0.25, na.rm = TRUE)
+    Q3 <- quantile(x, 0.75, na.rm = TRUE)
+    IQR_value <- Q3 - Q1
+    
+    lower_bound <- Q1 - 1.5 * IQR_value
+    upper_bound <- Q3 + 1.5 * IQR_value
+    
+    x <- ifelse(x < lower_bound | x > upper_bound, NA, x)
+    return(x)
+  }
   
-  # Step 6: Plotting the ratios as percentages
-  ggplot(plot_data, aes(x = date, y = ratio, color = as.factor(lag))) +
+  # Step 4.5: Replace outliers with NA for ratios
+  fundamentals_df <- fundamentals_df %>%
+    group_by(symbol) %>%  # Apply outlier removal within each symbol group
+    mutate(
+      full_Equity_increase_capex_2y = replace_outliers_with_na(full_Equity_increase_capex_2y),
+      full_Equity_increase_capex_3y = replace_outliers_with_na(full_Equity_increase_capex_3y),
+      full_Equity_increase_capex_4y = replace_outliers_with_na(full_Equity_increase_capex_4y),
+      full_Equity_increase_capex_8y = replace_outliers_with_na(full_Equity_increase_capex_8y)
+    ) %>%
+    ungroup()
+  
+  # Step 5: Calculate Correlations for Each Symbol
+  correlation_results <- fundamentals_df %>%
+    group_by(symbol) %>%
+    summarise(
+      full_Equity_increase_capex_corr_2y = ifelse(sum(!is.na(equity_increase_annual) & !is.na(capex_TTM_2y)) > 1, 
+                       cor(equity_increase_annual, capex_TTM_2y, use = "complete.obs"), NA),
+      full_Equity_increase_capex_corr_3y = ifelse(sum(!is.na(equity_increase_annual) & !is.na(capex_TTM_3y)) > 1, 
+                       cor(equity_increase_annual, capex_TTM_3y, use = "complete.obs"), NA),
+      full_Equity_increase_capex_corr_4y = ifelse(sum(!is.na(equity_increase_annual) & !is.na(capex_TTM_4y)) > 1, 
+                       cor(equity_increase_annual, capex_TTM_4y, use = "complete.obs"), NA),
+      full_Equity_increase_capex_corr_8y = ifelse(sum(!is.na(equity_increase_annual) & !is.na(capex_TTM_8y)) > 1, 
+                       cor(equity_increase_annual, capex_TTM_8y, use = "complete.obs"), NA)
+    ) %>% 
+    ungroup()
+
+  print(correlation_results)
+  
+  
+  # Step 6: Prepare data for plotting
+  plot_data <- fundamentals_df %>%
+    select(date, symbol, full_Equity_increase_capex_2y, full_Equity_increase_capex_3y,
+           full_Equity_increase_capex_4y, full_Equity_increase_capex_8y) %>%
+    pivot_longer(cols = starts_with("full_Equity_increase_capex_"), names_to = "lag", values_to = "ratio") %>%
+    mutate(lag_year = as.numeric(str_extract(lag, "\\d+")))  # Extract numeric digits
+  
+  
+  # Step 7: Plotting the ratios as percentages
+  p <- ggplot(plot_data, aes(x = date, y = ratio, color = as.factor(lag))) +
     geom_point(size = 2) +
     geom_line() +
-    labs(title = "Ratio of Total Equity (incl. dividend paid) Increase to Capex",
+    labs(title = "Impact of Capex on Total Equity Growth",
+         subtitle = "Ratios of Equity Increase to Capex",
          y = "Equity Increase / Capex ",
+         x = "Date",
          color = "Lag (Years)") +
     theme_minimal(base_size = 14) + 
     facet_wrap(~ symbol, scales = "fixed", ncol = 1)
+  
+  # Step 8: Prepare correlation labels for annotations
+  correlation_labels <- correlation_results %>%
+    pivot_longer(
+      cols = starts_with("full_Equity_increase_capex_corr"), 
+      names_to = "lag", 
+      values_to = "correlation"
+    ) %>%
+    mutate(
+      lag = str_extract(lag, "\\d+")  # Extract only the year (e.g., 2, 3, 4, 8)
+    )
+  
+  
+  # Step 9: Add correlation results as annotations on the plot
+  p <- p + geom_text(
+    data = correlation_labels,
+    aes(),  # Empty aes since we manually provide x, y
+    x = max(plot_data$date),
+    y = max(plot_data$ratio, na.rm = TRUE) * 0.9,
+    label = paste0("Corr (", correlation_labels$lag, "y): ", round(correlation_labels$correlation, 2)),
+    color = "black",
+    size = 4,
+    hjust = 0, vjust = 1.2,
+    inherit.aes = FALSE
+  )
+  
+  
+  # Return the plot
+  return(p)
 }
 
+
+
+# Calculate TTM -----------------------------------------------------------
+
+library(zoo)
+
+ttm_fundamentals <- function(df, fundamentals) {
+  # Check if inputs are valid
+  if (!all(fundamentals %in% colnames(df))) {
+    stop("One or more fundamentals are not present in the dataframe.")
+  }
+  
+  # Apply TTM calculation for each selected fundamental
+  df <- df %>%
+    group_by(symbol) %>%            # Group by symbol (assuming 'symbol' column exists)
+    arrange(desc(date), .by_group = TRUE) %>% # Sort by date within each group
+    mutate(across(all_of(fundamentals), 
+                  ~rollapply(.x, width = 4, FUN = sum, align = "left", fill = NA),
+                  .names = "{.col}_TTM"))      # Apply rollapply and create new columns
+  
+  return(df)
+}

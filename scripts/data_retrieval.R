@@ -110,10 +110,22 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
       pb$tick()
       tryCatch({
         data <- fromJSON(paths[x])
-        if (length(data) == 0) {
-          NULL
+        # Explicitly check for Key Metrics or Ratios to add the ticker
+        if (type == "Key Metrics" || type == "Ratios") {
+          if (length(data) == 0) {
+            NULL
+          } else {
+            # Convert to dataframe and add the ticker symbol explicitly
+            result <- data.frame(data)
+            result$symbol <- symbols_df$symbol[x]  # Add ticker symbol
+            return(result)
+          }
         } else {
-          data.frame(data)
+          if (length(data) == 0) {
+            NULL
+          } else {
+            data.frame(data)
+          }
         }
       }, error = function(cond) {
         message(paste("API provided an error for", type, "Ticker:", symbols_df$symbol[x]))
@@ -176,23 +188,22 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
   sum(is.na(Profile$symbol))
   
   # Perform joins step-by-step and inspect the results
-  
-  # Add artificial row identifier to both DataFrames
-  Profile$row_id <- seq_len(nrow(Profile))
-  Ratios$row_id <- seq_len(nrow(Ratios))
-  KeyMetrics$row_id <- seq_len(nrow(KeyMetrics))
-  
-  df <- Profile %>% 
-    left_join(Ratios)
-  
-  df <- df %>% 
-    left_join(KeyMetrics)
-  
-  df <- df %>% 
-    select(-row_id)
-  
+  df <- Profile %>%
+    left_join(Ratios, by = "symbol") %>%
+    left_join(KeyMetrics, by = "symbol", suffix = c("_Ratios", "_KeyMetrics")) %>%
+    
+    # Resolve duplicate columns conditionally
+    mutate(across(ends_with("_Ratios"), 
+                  ~ coalesce(.x, get(sub("_Ratios", "_KeyMetrics", cur_column()))), 
+                  .names = "{.col}_final")) %>%
+    
+    # Clean up column names: retain only the resolved values
+    select(-ends_with("_Ratios"), -ends_with("_KeyMetrics")) %>%
+    rename_with(~ sub("_Ratios_final", "", .), ends_with("_final"))
+
   fundamentals <- df %>% 
-    left_join(CF)
+    left_join(CF, by = c("symbol")) %>% 
+    select(-ends_with(".x"), -ends_with(".y"))
   
   fundamentals <- fundamentals %>% 
     left_join(IS, by = c("symbol","date")) %>% 
