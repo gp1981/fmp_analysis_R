@@ -201,37 +201,37 @@ ratio_analysis_chart <- function(financial_data_df){
   }
   
   # List of ratio columns to process
-  financial_data_df_columns <- c("currentRatioTTM", "quickRatioTTM", "cashRatioTTM", 
-                                 "daysOfSalesOutstandingTTM", "daysOfInventoryOutstandingTTM", 
-                                 "daysOfPayablesOutstandingTTM", "operatingCycleTTM", 
-                                 "cashConversionCycleTTM", "debtEquityRatioTTM", 
-                                 "totalDebtToCapitalizationTTM", "longTermDebtToCapitalizationTTM", 
-                                 "shortTermCoverageRatiosTTM", "cashFlowToDebtRatioTTM")
+  financial_data_df_columns <- c("currentRatio", "quickRatio", "cashRatio", 
+                                 "daysOfSalesOutstanding", "daysOfInventoryOutstanding", 
+                                 "daysOfPayablesOutstanding", "operatingCycle", 
+                                 "cashConversionCycle", "debtEquityRatio", 
+                                 "totalDebtToCapitalization", "longTermDebtToCapitalization", 
+                                 "shortTermCoverageRatios", "cashFlowToDebtRatio")
   
   # Reshape the data to long format
   current_assets_ratio_data_long <- financial_data_df %>%
-    select(symbol, date, currentRatioTTM, quickRatioTTM, cashRatioTTM) %>%
-    pivot_longer(cols = c(currentRatioTTM, quickRatioTTM, cashRatioTTM),
+    select(symbol, date, currentRatio, quickRatio, cashRatio) %>%
+    pivot_longer(cols = c(currentRatio, quickRatio, cashRatio),
                  names_to = "ratio_type", 
                  values_to = "value")
   
   cash_conversion_ratio_data_long <- financial_data_df %>%
-    select(symbol, date, daysOfSalesOutstandingTTM, daysOfInventoryOutstandingTTM, 
-           daysOfPayablesOutstandingTTM, operatingCycleTTM, cashConversionCycleTTM) %>%
-    pivot_longer(cols = c(daysOfSalesOutstandingTTM, daysOfInventoryOutstandingTTM, 
-                          daysOfPayablesOutstandingTTM, operatingCycleTTM, cashConversionCycleTTM),
+    select(symbol, date, daysOfSalesOutstanding, daysOfInventoryOutstanding, 
+           daysOfPayablesOutstanding, operatingCycle, cashConversionCycle) %>%
+    pivot_longer(cols = c(daysOfSalesOutstanding, daysOfInventoryOutstanding, 
+                          daysOfPayablesOutstanding, operatingCycle, cashConversionCycle),
                  names_to = "ratio_type", 
                  values_to = "value")
   
   debt_ratio_data_long <- financial_data_df %>%
-    select(symbol, date, debtEquityRatioTTM, totalDebtToCapitalizationTTM, longTermDebtToCapitalizationTTM) %>%
-    pivot_longer(cols = c(debtEquityRatioTTM, totalDebtToCapitalizationTTM, longTermDebtToCapitalizationTTM),
+    select(symbol, date, debtEquityRatio, totalDebtToCapitalization, longTermDebtToCapitalization) %>%
+    pivot_longer(cols = c(debtEquityRatio, totalDebtToCapitalization, longTermDebtToCapitalization),
                  names_to = "ratio_type", 
                  values_to = "value")
   
   debt_coverage_data_long <- financial_data_df %>%
-    select(symbol, date, shortTermCoverageRatiosTTM, cashFlowToDebtRatioTTM) %>%
-    pivot_longer(cols = c(shortTermCoverageRatiosTTM, cashFlowToDebtRatioTTM),
+    select(symbol, date, shortTermCoverageRatios, cashFlowToDebtRatio) %>%
+    pivot_longer(cols = c(shortTermCoverageRatios, cashFlowToDebtRatio),
                  names_to = "ratio_type", 
                  values_to = "value")
   
@@ -311,16 +311,16 @@ ratio_analysis_chart <- function(financial_data_df){
          title = "Trends of Financial Ratios Over Time",
          subtitle = "Cash conversion ratio by Symbol",
          color = "Ratio Type") +
-    scale_color_manual(values = c("daysOfSalesOutstandingTTM" = "#0072B2",
-                                  "daysOfInventoryOutstandingTTM" = "#009E73",
-                                  "daysOfPayablesOutstandingTTM" = "#D55E00",
-                                  "operatingCycleTTM" = "#CC79A7",
-                                  "cashConversionCycleTTM" = "#E69F00"),
-                       labels = c("daysOfSalesOutstandingTTM" = "Days of Sales OutstandingTTM (DSO)", 
-                                  "daysOfInventoryOutstandingTTM" = "Days of Inventory OutstandingTTM (DIO)", 
-                                  "daysOfPayablesOutstandingTTM" = "Days of Payable OutstandingTTM (DPO)",
-                                  "operatingCycleTTM" = "Operating CycleTTM (DSO + DIO)",
-                                  "cashConversionCycleTTM" = "Cash Conversion CycleTTM (DSO + DIO + DPO)")) +
+    scale_color_manual(values = c("daysOfSalesOutstanding" = "#0072B2",
+                                  "daysOfInventoryOutstanding" = "#009E73",
+                                  "daysOfPayablesOutstanding" = "#D55E00",
+                                  "operatingCycle" = "#CC79A7",
+                                  "cashConversionCycle" = "#E69F00"),
+                       labels = c("daysOfSalesOutstanding" = "Days of Sales Outstanding (DSO)", 
+                                  "daysOfInventoryOutstanding" = "Days of Inventory Outstanding (DIO)", 
+                                  "daysOfPayablesOutstanding" = "Days of Payable Outstanding (DPO)",
+                                  "operatingCycle" = "Operating Cycle (DSO + DIO)",
+                                  "cashConversionCycle" = "Cash Conversion Cycle (DSO + DIO + DPO)")) +
     scale_y_continuous(limits = c(min(cash_conversion_iqr_limits$ymin, na.rm = TRUE) * 0.8, 
                                   max(cash_conversion_iqr_limits$ymax, na.rm = TRUE) * 0.8)) +
     theme_minimal() +
@@ -346,12 +346,12 @@ ratio_analysis_chart <- function(financial_data_df){
          title = "Trends of Financial Ratios Over Time",
          subtitle = "Debt ratios by Symbol",
          color = "Ratio Type") +
-    scale_color_manual(values = c("debtEquityRatioTTM" = "#0072B2",
-                                  "totalDebtToCapitalizationTTM" = "#009E73",
-                                  "longTermDebtToCapitalizationTTM" = "#D55E00"),
-                       labels = c("debtEquityRatioTTM" = "Debt to EquityTTM (Total Liabilities / Total Equity)",
-                                  "totalDebtToCapitalizationTTM" = "Total Debt to CapitalizationTTM (Total Debt / (Total Debt + Total Equity))", 
-                                  "longTermDebtToCapitalizationTTM" = "Long Term CapitalizationTTM (Long Term Debt / (Long Term Debt + Total Equity))")) + 
+    scale_color_manual(values = c("debtEquityRatio" = "#0072B2",
+                                  "totalDebtToCapitalization" = "#009E73",
+                                  "longTermDebtToCapitalization" = "#D55E00"),
+                       labels = c("debtEquityRatio" = "Debt to Equity (Total Liabilities / Total Equity)",
+                                  "totalDebtToCapitalization" = "Total Debt to Capitalization (Total Debt / (Total Debt + Total Equity))", 
+                                  "longTermDebtToCapitalization" = "Long Term Capitalization (Long Term Debt / (Long Term Debt + Total Equity))")) + 
     scale_y_continuous(limits = c(min(debt_ratio_iqr_limits$ymin, na.rm = TRUE) * 0.8, 
                                   max(debt_ratio_iqr_limits$ymax, na.rm = TRUE) * 0.8)) +
     theme_minimal() +
@@ -375,10 +375,10 @@ ratio_analysis_chart <- function(financial_data_df){
          title = "Trends of Debt Coverage Over Time",
          subtitle = "Debt coverage by Symbol",
          color = "Ratio Type") +
-    scale_color_manual(values = c("shortTermCoverageRatiosTTM" = "#0072B2", 
-                                  "cashFlowToDebtRatioTTM" = "#E69F00"),
-                       labels = c("shortTermCoverageRatiosTTM" = "Short Term Coverage Ratio (Operating Cash Flow / Short Term Debt)",
-                                  "cashFlowToDebtRatioTTM" =  "Cash Flow to Debt Ratio (Operating Cash Flow / Total Debt)")) + 
+    scale_color_manual(values = c("shortTermCoverageRatios" = "#0072B2", 
+                                  "cashFlowToDebtRatio" = "#E69F00"),
+                       labels = c("shortTermCoverageRatios" = "Short Term Coverage Ratio (Operating Cash Flow / Short Term Debt)",
+                                  "cashFlowToDebtRatio" =  "Cash Flow to Debt Ratio (Operating Cash Flow / Total Debt)")) + 
     scale_y_continuous(limits = c(min(debt_coverage_iqr_limits$ymin, na.rm = TRUE) * 0.3, 
                                   max(debt_coverage_iqr_limits$ymax, na.rm = TRUE) * 0.3)) +
     theme_minimal() +
@@ -410,11 +410,11 @@ ratio_analysis_chart <- function(financial_data_df){
 
 capex_equity_growth_plot <- function(fundamentals_df) {
   
-  # Step 1: Calculate Capex (TTM)
+  # Step 1: Calculate Capex ()
   fundamentals_df <- fundamentals_df %>%
     group_by(symbol) %>% 
     arrange(date) %>%
-    mutate(capex = capexToRevenueTTM * revenue,
+    mutate(capex = capexToRevenue * revenue,
            capex_TTM = rollapply(capex, width = 4, FUN = sum, fill = NA, align = "right")) %>% 
     ungroup()
   
@@ -453,7 +453,7 @@ capex_equity_growth_plot <- function(fundamentals_df) {
     ungroup()
   
   
-  # Step 4: Calculate Ratios using Capex TTM
+  # Step 4: Calculate Ratios using Capex 
   fundamentals_df <- fundamentals_df %>%
     group_by(symbol) %>% 
     mutate(

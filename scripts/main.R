@@ -26,7 +26,7 @@ symbols_df_MF <- MF_df %>%
   select(name, everything())
 
 # 05 - Select manually stocks -------------------------------------------
-symbols_df <- symbols_df %>% filter(symbol %in% c("RIO", "BHP", "ALB"))
+symbols_df <- symbols_df %>% filter(symbol %in% c("SWKS", "ALAB", "GFS"))
 # symbols_df <- symbols_df_MF
 
 # 06 - Get fundamentals of selected stocks -------------------------

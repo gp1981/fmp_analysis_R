@@ -76,28 +76,36 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
   API_BalanceSheet_path_base <- 'https://financialmodelingprep.com/api/v3/balance-sheet-statement/'
   API_CashFlow_path_base <- 'https://financialmodelingprep.com/api/v3/cash-flow-statement/'
   API_Profile_path_base <- 'https://financialmodelingprep.com/api/v3/profile/'
-  API_KeyMetrics_path_base <- 'https://financialmodelingprep.com/api/v3/key-metrics-ttm/'
-  API_Ratio_path_base <- 'https://financialmodelingprep.com/api/v3/ratios-ttm/'
-  
+  API_KeyMetrics_TTM_path_base <- 'https://financialmodelingprep.com/api/v3/key-metrics-ttm/'
+  API_Ratios_TTM_path_base <- 'https://financialmodelingprep.com/api/v3/ratios-ttm/'
+  API_KeyMetrics_path_base <- 'https://financialmodelingprep.com/api/v3/key-metrics/'
+  API_Ratios_path_base <- 'https://financialmodelingprep.com/api/v3/ratios/'
+
   if (period == "quarter") {
     API_IncomeStatement_path_suffix <- '?period=quarter'
     API_BalanceSheet_path_suffix <- '?period=quarter'
     API_CashFlow_path_suffix <- '?period=quarter'
+    API_KeyMetrics_path_suffix <- '?period='
+    API_Ratios_path_suffix <- '?period='
   } else {
     API_IncomeStatement_path_suffix <- '?period=annual'
     API_BalanceSheet_path_suffix <- '?period=annual'
     API_CashFlow_path_suffix <- '?period=annual'
+    API_KeyMetrics_path_suffix <- '?period=annual'
+    API_Ratios_path_suffix <- '?period=annual'
   }
   
   API_IncomeStatement_path <- paste0(API_IncomeStatement_path_base, symbols_df$symbol, API_IncomeStatement_path_suffix, '&limit=', limit, '&apikey=', API_Key)
   API_BalanceSheet_path <- paste0(API_BalanceSheet_path_base, symbols_df$symbol, API_BalanceSheet_path_suffix, '&limit=', limit, '&apikey=', API_Key)
   API_CashFlow_path <- paste0(API_CashFlow_path_base, symbols_df$symbol, API_CashFlow_path_suffix, '&limit=', limit, '&apikey=', API_Key)
   API_Profile_path <- paste0(API_Profile_path_base, symbols_df$symbol, '?apikey=', API_Key)
-  API_KeyMetrics_path <- paste0(API_KeyMetrics_path_base, symbols_df$symbol, '?apikey=', API_Key)
-  API_Ratio_path <- paste0(API_Ratio_path_base, symbols_df$symbol,'?apikey=', API_Key)
+  API_KeyMetrics_TTM_path <- paste0(API_KeyMetrics_TTM_path_base, symbols_df$symbol, '?apikey=', API_Key)
+  API_KeyMetrics_path <- paste0(API_KeyMetrics_path_base, symbols_df$symbol,API_KeyMetrics_path_suffix, period, '&limit=', limit, '&apikey=', API_Key)
+  API_Ratios_TTM_path <- paste0(API_Ratios_TTM_path_base, symbols_df$symbol,'?apikey=', API_Key)
+  API_Ratios_path <- paste0(API_Ratios_path_base, symbols_df$symbol, API_Ratios_path_suffix, period, '&limit=', limit, '&apikey=', API_Key)
   
   # Progress bar
-  total_symbols <- nrow(symbols_df) * 6 # Adjust the total to the number of different data
+  total_symbols <- nrow(symbols_df) * 8 # Adjust the total to the number of different data
   pb <- progress_bar$new(
     format = "  [:bar] :percent in :elapsed",
     total = total_symbols, 
@@ -144,9 +152,11 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
   IS <- fetch_fundamentals_data(API_IncomeStatement_path, "Income Statement")
   BS <- fetch_fundamentals_data(API_BalanceSheet_path, "Balance Sheet")
   CF <- fetch_fundamentals_data(API_CashFlow_path, "Cash Flow")
-  KeyMetrics <- fetch_fundamentals_data(API_KeyMetrics_path, "Key Metrics")
   Profile <- fetch_fundamentals_data(API_Profile_path, "Profile data")
-  Ratios <- fetch_fundamentals_data(API_Ratio_path, "Ratios")
+  KeyMetrics_TTM <- fetch_fundamentals_data(API_KeyMetrics_TTM_path, "Key Metrics")
+  KeyMetrics <- fetch_fundamentals_data(API_KeyMetrics_path, "Key Metrics")
+  Ratios_TTM <- fetch_fundamentals_data(API_Ratios_TTM_path, "Ratios")
+  Ratios <- fetch_fundamentals_data(API_Ratios_path, "Ratios")
   
   # Formatting data
   IS <- IS %>% 
@@ -168,6 +178,12 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
       change_otherNonCashItems = otherNonCashItems
     )
   
+  Ratios <- Ratios %>% 
+    mutate_at("date", as.Date)
+  
+  KeyMetrics <- KeyMetrics %>% 
+    mutate_at("date", as.Date)
+  
   Profile <- Profile %>% 
     mutate_at(vars(ipoDate), as.Date) %>% 
     mutate(Statement = "Profile")
@@ -178,6 +194,10 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
   stopifnot("symbol" %in% colnames(IS))
   stopifnot("symbol" %in% colnames(BS))
   stopifnot("symbol" %in% colnames(CF))
+  stopifnot("symbol" %in% colnames(KeyMetrics))
+  stopifnot("symbol" %in% colnames(KeyMetrics_TTM))
+  stopifnot("symbol" %in% colnames(Ratios))
+  stopifnot("symbol" %in% colnames(Ratios_TTM))
 
   
   # Check for NA values in the key columns
@@ -186,30 +206,22 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
   sum(is.na(BS$symbol))
   sum(is.na(CF$symbol))
   sum(is.na(Profile$symbol))
+  sum(is.na(KeyMetrics$symbol))
+  sum(is.na(KeyMetrics_TTM$symbol))
+  sum(is.na(Ratios$symbol))
+  sum(is.na(Ratios_TTM$symbol))
   
   # Perform joins step-by-step and inspect the results
   df <- Profile %>%
+    left_join(Ratios_TTM, by="symbol") %>% 
+    left_join(KeyMetrics_TTM) %>% 
     left_join(Ratios, by = "symbol") %>%
-    left_join(KeyMetrics, by = "symbol", suffix = c("_Ratios", "_KeyMetrics")) %>%
+    left_join(KeyMetrics)
     
-    # Resolve duplicate columns conditionally
-    mutate(across(ends_with("_Ratios"), 
-                  ~ coalesce(.x, get(sub("_Ratios", "_KeyMetrics", cur_column()))), 
-                  .names = "{.col}_final")) %>%
-    
-    # Clean up column names: retain only the resolved values
-    select(-ends_with("_Ratios"), -ends_with("_KeyMetrics")) %>%
-    rename_with(~ sub("_Ratios_final", "", .), ends_with("_final"))
-
   fundamentals <- df %>% 
-    left_join(CF, by = c("symbol")) %>% 
-    select(-ends_with(".x"), -ends_with(".y"))
-  
-  fundamentals <- fundamentals %>% 
-    left_join(IS, by = c("symbol","date")) %>% 
-    select(-ends_with(".x"), -ends_with(".y"))
-  
-  fundamentals <- fundamentals %>% 
+    left_join(CF, by = c("symbol","date")) %>% 
+    left_join(IS, by = c("symbol","date")) %>%
+    select(-ends_with(".x"), -ends_with(".y")) %>% 
     left_join(BS, by = c("symbol","date")) %>% 
     select(-ends_with(".x"), -ends_with(".y"))
 
@@ -235,14 +247,8 @@ get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
   # Find columns that end with ".x"
   x_columns <- grep("\\.x$", column_names, value = TRUE)
   
-  # Function to remove the ".x" suffix
-  remove_x_suffix <- function(name) {
-    sub("\\.x$", "", name)
-  }
-  
-  # Rename columns with ".x" suffix to remove the suffix
-  fundamentals <- fundamentals %>%
-    rename_with(remove_x_suffix, all_of(x_columns))
+  # Remove columns with ".y" suffix
+  fundamentals <- fundamentals %>% select(-all_of(x_columns))
   
   return(fundamentals)
 }
