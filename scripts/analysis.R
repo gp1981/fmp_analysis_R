@@ -95,7 +95,7 @@ calculate_MF_ranking <- function(df){
            
            Equity_Net_Premium = mktCap - Tangible_Equity_book,
            
-           FCFtoEquity_Net_premium= Equity_Net_Premium / FCF.4FQ) %>% 
+           Equity_Net_premiumToFCF = Equity_Net_Premium / FCF.4FQ) %>% 
     
     mutate(Net_Working_Capital = (totalCurrentAssets - excess_cash) - (totalCurrentLiabilities - shortTermDebt),
            
