@@ -145,5 +145,110 @@ extract_specific_variables <- function(df_list, variables) {
   
   return(combined_df)
 }
-# Files to source ---------------------------------------------------------
-source('scripts/data_retrieval.R')
+
+# Reduce the list "FinancialsMetricsProfile" and remove columns with suffixes ".1", ".2", ".x", ".y" that are duplicates or wrong matches
+Reduce_FinancialsMetricsProfile <- function(FinancialsMetricsProfile) {
+
+  FinancialsMetricsProfile$IncomeStatement <- FinancialsMetricsProfile$IncomeStatement %>% 
+    mutate(
+      date = as.Date(date),
+      fillingDate = as.Date(fillingDate),
+      acceptedDate = as.Date(acceptedDate),
+      calendarYear = as.integer(calendarYear)
+    )
+  
+  FinancialsMetricsProfile$BalanceSheet <- FinancialsMetricsProfile$BalanceSheet %>% 
+    mutate(
+      date = as.Date(date),
+      fillingDate = as.Date(fillingDate),
+      acceptedDate = as.Date(acceptedDate),
+      calendarYear = as.integer(calendarYear)
+    )
+  
+  FinancialsMetricsProfile$CashFlow <- FinancialsMetricsProfile$CashFlow %>% 
+    mutate(
+      date = as.Date(date),
+      fillingDate = as.Date(fillingDate),
+      acceptedDate = as.Date(acceptedDate),
+      calendarYear = as.integer(calendarYear)
+    )
+  
+  FinancialsMetricsProfile$KeyMetrics <- FinancialsMetricsProfile$KeyMetrics %>% 
+    mutate(
+      date = as.Date(date),
+      calendarYear = as.integer(calendarYear)
+    )
+  
+  FinancialsMetricsProfile$Ratios <- FinancialsMetricsProfile$Ratios %>% 
+    mutate(
+      date = as.Date(date),
+      calendarYear = as.integer(calendarYear)
+    )
+  
+  FinancialsMetricsProfile$Shares_Float <- FinancialsMetricsProfile$Shares_Float %>% 
+    mutate(
+      date = as.Date(date),
+    )
+  
+  DF_IS <- FinancialsMetricsProfile$IncomeStatement
+  DF_BS <- FinancialsMetricsProfile$BalanceSheet
+  DF_CF <- FinancialsMetricsProfile$CashFlow
+  DF_KM_TTM <- FinancialsMetricsProfile$KeyMetrics_TTM
+  DF_KM <- FinancialsMetricsProfile$KeyMetrics
+  DF_Ratios_TTM <- FinancialsMetricsProfile$Ratios_TTM
+  DF_Ratios <- FinancialsMetricsProfile$Ratios
+  DF_Shares_Float <- FinancialsMetricsProfile$Shares_Float
+  DF_ST <- FinancialsMetricsProfile$symbols_df
+
+  
+  DF <- DF_ST %>%  
+    left_join(DF_Ratios_TTM, by = c("symbol"))
+  
+  DF <- DF %>% 
+    left_join(DF_KM_TTM, by = c("symbol")) %>% 
+    select(-ends_with(".y")) %>%  # Remove .y columns
+    rename_with(~ gsub("\\.x$", "", .), ends_with(".x"))  # Rename .x columns by removing the suffix
+  
+  DF <- DF %>%  
+    left_join(DF_BS, by = c("symbol")) %>% 
+    select(-ends_with(".y")) %>%  # Remove .y columns
+    rename_with(~ gsub("\\.x$", "", .), ends_with(".x"))  # Rename .x columns by removing the suffix
+  
+  DF <- DF %>%
+    left_join(DF_IS, by = c("date", "symbol")) %>% 
+    select(-ends_with(".y")) %>%  # Remove .y columns
+    rename_with(~ gsub("\\.x$", "", .), ends_with(".x"))  # Rename .x columns by removing the suffix
+  
+  DF <- DF %>%
+    left_join(DF_CF,  by = c("date", "symbol")) %>% 
+    filter(!is.na(freeCashFlow)) %>% 
+    select(-ends_with(".y")) %>%  # Remove .y columns
+    rename_with(~ gsub("\\.x$", "", .), ends_with(".x"))  # Rename .x columns by removing the suffix
+  
+  DF <- DF %>%
+    left_join(DF_KM, by = c("date", "symbol")) %>% 
+    select(-ends_with(".y")) %>%  # Remove .y columns
+    rename_with(~ gsub("\\.x$", "", .), ends_with(".x"))  # Rename .x columns by removing the suffix
+  
+  DF <- DF %>%
+    left_join(DF_Ratios, by = c("date", "symbol")) %>% 
+    select(-ends_with(".y")) %>%  # Remove .y columns
+    rename_with(~ gsub("\\.x$", "", .), ends_with(".x"))  # Rename .x columns by removing the suffix
+  
+  DF <- DF %>%
+    left_join(DF_Shares_Float, by = c("date", "symbol")) %>% 
+    select(-ends_with(".y")) %>%  # Remove .y columns
+    rename_with(~ gsub("\\.x$", "", .), ends_with(".x"))  # Rename .x columns by removing the suffix
+  
+  DF <- DF %>% 
+    mutate(across(where(is.integer), as.numeric))
+  
+  DF <- DF %>% 
+    mutate(outstandingShares = as.numeric(outstandingShares))
+  
+  DF <- DF %>% 
+    mutate(outstandingShares = ifelse(is.na(outstandingShares), weightedAverageShsOutDil, outstandingShares))
+  
+  return(DF)
+}
+

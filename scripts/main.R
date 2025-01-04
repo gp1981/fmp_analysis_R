@@ -26,19 +26,43 @@ symbols_df_MF <- MF_df %>%
   select(name, everything())
 
 # 05 - Select manually stocks -------------------------------------------
-symbols_df <- symbols_df %>% filter(symbol %in% c("SWKS", "ALAB", "GFS"))
+symbols_df <- symbols_df %>% filter(symbol %in% c("NKE", "LNNGY", "LULU"))
 # symbols_df <- symbols_df_MF
 
 # 06 - Get fundamentals of selected stocks -------------------------
-fundamentals_df <- get_fundamentals_data_df(symbols_df, period = "quarter", 
+fundamentals_df_original <- get_fundamentals_data_df(symbols_df, period = "quarter", 
                                             limit = 60, API_Key = API_Key)
+
+fundamentals_df <- Reduce_FinancialsMetricsProfile(fundamentals_df_original)
+
 fundamentals_df <- ttm_fundamentals(fundamentals_df, 
                                     fundamentals = c("revenue",
                                                      "costOfRevenue",
                                                      "sellingGeneralAndAdministrativeExpenses",
                                                      "otherExpenses",
                                                      "researchAndDevelopmentExpenses",
-                                                     "operatingIncome"))
+                                                     "operatingIncome",
+                                                     "incomeTaxExpense",
+                                                     "netIncome",
+                                                     "operatingCashFlow",
+                                                     "dividendsPaid",
+                                                     "commonStockIssued",
+                                                     "commonStockRepurchased"))
+
+Stock_Comparative_analysis<-fundamentals_df %>% filter(symbol=="NKE") %>% select(date,symbol,
+                                                          revenue_TTM,costOfRevenue_TTM,
+                                                          sellingGeneralAndAdministrativeExpenses_TTM,
+                                                          otherExpenses_TTM,
+                                                          researchAndDevelopmentExpenses_TTM,
+                                                          operatingIncome_TTM,
+                                                          incomeTaxExpense_TTM,
+                                                          netIncome_TTM,
+                                                          operatingCashFlow_TTM,
+                                                          dividendsPaid_TTM,
+                                                          commonStockIssued_TTM,
+                                                          commonStockRepurchased_TTM)
+
+Stock_Comparative_analysis <- Stock_Comparative_analysis %>% mutate(across(.col = where(is.numeric), .fns = ~ . / 1e6))
 
 # 06 - Get price and quote data of selected stocks -------------------------
 quote_data_df <- get_quote_data_df(symbols_df, API_Key = API_Key)

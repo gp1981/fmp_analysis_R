@@ -69,188 +69,190 @@ get_stock_data_df <- function(API_Key){
   return(symbol_df)
 }
 
-get_fundamentals_data_df <- function(symbols_df, period, limit, API_Key){
+get_fundamentals_data_df <- function(symbols_df, API_Key, period, limit){
   
   # Create API URLs for various calls to collect Financial Statements
   API_IncomeStatement_path_base <- 'https://financialmodelingprep.com/api/v3/income-statement/'
   API_BalanceSheet_path_base <- 'https://financialmodelingprep.com/api/v3/balance-sheet-statement/'
   API_CashFlow_path_base <- 'https://financialmodelingprep.com/api/v3/cash-flow-statement/'
-  API_Profile_path_base <- 'https://financialmodelingprep.com/api/v3/profile/'
   API_KeyMetrics_TTM_path_base <- 'https://financialmodelingprep.com/api/v3/key-metrics-ttm/'
-  API_Ratios_TTM_path_base <- 'https://financialmodelingprep.com/api/v3/ratios-ttm/'
   API_KeyMetrics_path_base <- 'https://financialmodelingprep.com/api/v3/key-metrics/'
+  API_Ratios_TTM_path_base <- 'https://financialmodelingprep.com/api/v3/ratios-ttm/'
   API_Ratios_path_base <- 'https://financialmodelingprep.com/api/v3/ratios/'
-
+  API_Shares_Float <- 'https://financialmodelingprep.com/api/v4/historical/shares_float?symbol='
+  
   if (period == "quarter") {
-    API_IncomeStatement_path_suffix <- '?period=quarter'
-    API_BalanceSheet_path_suffix <- '?period=quarter'
-    API_CashFlow_path_suffix <- '?period=quarter'
+    API_IncomeStatement_path_suffix <- '?period='
+    API_BalanceSheet_path_suffix <- '?period='
+    API_CashFlow_path_suffix <- '?period='
     API_KeyMetrics_path_suffix <- '?period='
     API_Ratios_path_suffix <- '?period='
   } else {
-    API_IncomeStatement_path_suffix <- '?period=annual'
-    API_BalanceSheet_path_suffix <- '?period=annual'
-    API_CashFlow_path_suffix <- '?period=annual'
-    API_KeyMetrics_path_suffix <- '?period=annual'
-    API_Ratios_path_suffix <- '?period=annual'
+    API_IncomeStatement_path_suffix <- ''
+    API_BalanceSheet_path_suffix <- ''
+    API_CashFlow_path_suffix <- ''
+    API_KeyMetrics_path_suffix <- ''
+    API_Ratios_path_suffix <- ''
   }
   
-  API_IncomeStatement_path <- paste0(API_IncomeStatement_path_base, symbols_df$symbol, API_IncomeStatement_path_suffix, '&limit=', limit, '&apikey=', API_Key)
-  API_BalanceSheet_path <- paste0(API_BalanceSheet_path_base, symbols_df$symbol, API_BalanceSheet_path_suffix, '&limit=', limit, '&apikey=', API_Key)
-  API_CashFlow_path <- paste0(API_CashFlow_path_base, symbols_df$symbol, API_CashFlow_path_suffix, '&limit=', limit, '&apikey=', API_Key)
-  API_Profile_path <- paste0(API_Profile_path_base, symbols_df$symbol, '?apikey=', API_Key)
-  API_KeyMetrics_TTM_path <- paste0(API_KeyMetrics_TTM_path_base, symbols_df$symbol, '?apikey=', API_Key)
-  API_KeyMetrics_path <- paste0(API_KeyMetrics_path_base, symbols_df$symbol,API_KeyMetrics_path_suffix, period, '&limit=', limit, '&apikey=', API_Key)
-  API_Ratios_TTM_path <- paste0(API_Ratios_TTM_path_base, symbols_df$symbol,'?apikey=', API_Key)
-  API_Ratios_path <- paste0(API_Ratios_path_base, symbols_df$symbol, API_Ratios_path_suffix, period, '&limit=', limit, '&apikey=', API_Key)
+  # Initialize lists to store data
+  IS_list <- list()
+  BS_list <- list()
+  CF_list <- list()
+  KeyMetrics_list_TTM <- list()
+  KeyMetrics_list <- list()
+  Ratios_TTM <- list()
+  Ratios <- list()
+  Shares_Float <- list()
   
-  # Progress bar
-  total_symbols <- nrow(symbols_df) * 8 # Adjust the total to the number of different data
-  pb <- progress_bar$new(
-    format = "  [:bar] :percent in :elapsed",
-    total = total_symbols, 
-    width = 60
+  total_stocks <- length(symbols_df$symbol)
+  i <- 1
+  
+  # Define a function to process each ticker
+  process_symbol <- function(symbol) {
+    cat("Processing", symbol, "-", round(i / total_stocks * 100, 1), "% complete\n")
+    
+    # Construct API URLs for the current symbol
+    API_IncomeStatement_path <- paste0(API_IncomeStatement_path_base, symbol, API_IncomeStatement_path_suffix, period,  '&limit=', limit, '&apikey=', API_Key)
+    API_BalanceSheet_path <- paste0(API_BalanceSheet_path_base, symbol, API_BalanceSheet_path_suffix, period, '&limit=', limit, '&apikey=', API_Key)
+    API_CashFlow_path <- paste0(API_CashFlow_path_base, symbol, API_CashFlow_path_suffix, period, '&limit=', limit, '&apikey=', API_Key)
+    API_KeyMetrics_TTM_path <- paste0(API_KeyMetrics_TTM_path_base, symbol, '?apikey=', API_Key)
+    API_KeyMetrics_path <- paste0(API_KeyMetrics_path_base, symbol,API_KeyMetrics_path_suffix, period, '&limit=', limit, '&apikey=', API_Key)
+    API_Ratios_TTM_path <- paste0(API_Ratios_TTM_path_base, symbol, '?apikey=', API_Key)
+    API_Ratios_path <- paste0(API_Ratios_path_base, symbol, API_Ratios_path_suffix, period, '&limit=', limit, '&apikey=', API_Key)
+    API_Shares_Float_path <- paste0(API_Shares_Float, symbol, '&apikey=', API_Key)
+    
+    result <- list(
+      IS = NULL,
+      BS = NULL,
+      CF = NULL,
+      KM_TTM = NULL,
+      KM = NULL,
+      Ratios_TTM = NULL,
+      Ratios = NULL,
+      Shares_Float = NULL
+    )
+    
+    tryCatch({
+      # Retrieve Income Statement
+      Stock_IncomeStatement_temp <- fromJSON(API_IncomeStatement_path)
+      if (length(Stock_IncomeStatement_temp) > 0) {
+        result$IS <- data.frame(Stock_IncomeStatement_temp)
+      }
+      
+      # Retrieve Balance Sheet
+      Stock_BalanceSheet_temp <- fromJSON(API_BalanceSheet_path)
+      if (length(Stock_BalanceSheet_temp) > 0) {
+        result$BS <- data.frame(Stock_BalanceSheet_temp)
+      }
+      
+      # Retrieve Cash Flow Statement
+      Stock_CashFlow_temp <- fromJSON(API_CashFlow_path)
+      if (length(Stock_CashFlow_temp) > 0) {
+        result$CF <- data.frame(Stock_CashFlow_temp)
+      }
+      
+      # Retrieve Key Metrics TTM
+      Stock_KeyMetrics_temp_TTM <- fromJSON(API_KeyMetrics_TTM_path)
+      if (length(Stock_KeyMetrics_temp_TTM) > 0) {
+        result$KM_TTM <- data.frame(Stock_KeyMetrics_temp_TTM)
+        result$KM_TTM$symbol <- symbol # Add ticker column
+      }
+      
+      # Retrieve Key Metrics
+      Stock_KeyMetrics_temp <- fromJSON(API_KeyMetrics_path)
+      if (length(Stock_KeyMetrics_temp) > 0) {
+        result$KM <- data.frame(Stock_KeyMetrics_temp)
+      }
+      
+      # Retrieve Ratios TTM
+      Stock_Ratios_temp_TTM <- fromJSON(API_Ratios_TTM_path)
+      if (length(Stock_Ratios_temp_TTM) > 0) {
+        result$Ratios_TTM <- data.frame(Stock_Ratios_temp_TTM)
+        result$Ratios_TTM$symbol <- symbol  # Add ticker column
+      }
+      
+      # Retrieve Ratios
+      Stock_Ratios_temp <- fromJSON(API_Ratios_path)
+      if (length(Stock_Ratios_temp) > 0) {
+        result$Ratios <- data.frame(Stock_Ratios_temp)
+      }
+      
+      # Retrieve Shares Float
+      Shares_Float_temp <- fromJSON(API_Shares_Float_path)
+      if (length(Shares_Float_temp) > 0) {
+        result$Shares_Float <- data.frame(Shares_Float_temp)
+      }
+      
+    }, error = function(cond) {
+      message(paste("API provided an error for this symbol:", symbol))  # Use symbol instead of symbol
+      message("Here's the original error message:")
+      message(cond)
+    }, warning = function(cond) {
+      message(paste("API provided a warning for this symbol:", symbol))  # Use symbol instead of symbol
+      message("Here's the original warning message:")
+      message(cond)
+    })
+    
+    i <<- i + 1
+    
+    return(result)
+  }
+  
+  
+  
+  # Use lapply to process all tickers
+  results <- lapply(symbols_df$symbol, process_symbol)
+  
+  # Combine all dataframes
+  IS <- bind_rows(lapply(results, function(x) x$IS))
+  BS <- bind_rows(lapply(results, function(x) x$BS))
+  CF <- bind_rows(lapply(results, function(x) x$CF))
+  KeyMetrics_TTM <- bind_rows(lapply(results, function(x) x$KM_TTM))
+  KeyMetrics <- bind_rows(lapply(results, function(x) x$KM))
+  Ratios_TTM  <- bind_rows(lapply(results, function(x) x$Ratios_TTM))
+  Ratios  <- bind_rows(lapply(results, function(x) x$Ratios))
+  Shares_Float  <- bind_rows(lapply(results, function(x) x$Shares_Float))
+  
+  # Rename column "symbol" to "symbol" for consistency
+  if ("symbol" %in% colnames(IS)) {
+    IS <- IS %>% rename(symbol = symbol)
+  }
+  if ("symbol" %in% colnames(BS)) {
+    BS <- BS %>% rename(symbol = symbol)
+  }
+  if ("symbol" %in% colnames(CF)) {
+    CF <- CF %>% rename(symbol = symbol)
+  }
+  if ("symbol" %in% colnames(KeyMetrics_TTM)) {
+    KeyMetrics_TTM <- KeyMetrics_TTM %>% rename(symbol = symbol)
+  }
+  if ("symbol" %in% colnames(KeyMetrics)) {
+    KeyMetrics <- KeyMetrics %>% rename(symbol = symbol)
+  }
+  if ("symbol" %in% colnames(Ratios_TTM)) {
+    Ratios_TTM <- Ratios_TTM %>% rename(symbol = symbol)
+  }
+  if ("symbol" %in% colnames(Ratios)) {
+    Ratios <- Ratios %>% rename(symbol = symbol)
+  }
+  if ("symbol" %in% colnames(Shares_Float)) {
+    Shares_Float <- Shares_Float %>% rename(symbol = symbol)
+  }
+  
+  FinancialsMetricsProfile <- list(
+    IncomeStatement = IS,
+    BalanceSheet = BS,
+    CashFlow = CF,
+    KeyMetrics_TTM = KeyMetrics_TTM,
+    KeyMetrics = KeyMetrics,
+    Ratios_TTM = Ratios_TTM,
+    Ratios = Ratios,
+    Shares_Float = Shares_Float,
+    symbols_df = symbols_df
   )
   
-  # Function to retrieve all statements, key metrics, profile and ratios from symbols_df
-  fetch_fundamentals_data <- function(paths, type) {
-    bind_rows(lapply(1:length(paths), function(x) {
-      pb$tick()
-      tryCatch({
-        data <- fromJSON(paths[x])
-        # Explicitly check for Key Metrics or Ratios to add the ticker
-        if (type == "Key Metrics" || type == "Ratios") {
-          if (length(data) == 0) {
-            NULL
-          } else {
-            # Convert to dataframe and add the ticker symbol explicitly
-            result <- data.frame(data)
-            result$symbol <- symbols_df$symbol[x]  # Add ticker symbol
-            return(result)
-          }
-        } else {
-          if (length(data) == 0) {
-            NULL
-          } else {
-            data.frame(data)
-          }
-        }
-      }, error = function(cond) {
-        message(paste("API provided an error for", type, "Ticker:", symbols_df$symbol[x]))
-        message("Here's the original error message:")
-        message(cond)
-        return(NULL)
-      }, warning = function(cond) {
-        message(paste("API provided a warning for", type, "Ticker:", symbols_df$symbol[x]))
-        message("Here's the original warning message:")
-        message(cond)
-        return(NULL)
-      })
-    }))
-  }
-  
-  IS <- fetch_fundamentals_data(API_IncomeStatement_path, "Income Statement")
-  BS <- fetch_fundamentals_data(API_BalanceSheet_path, "Balance Sheet")
-  CF <- fetch_fundamentals_data(API_CashFlow_path, "Cash Flow")
-  Profile <- fetch_fundamentals_data(API_Profile_path, "Profile data")
-  KeyMetrics_TTM <- fetch_fundamentals_data(API_KeyMetrics_TTM_path, "Key Metrics")
-  KeyMetrics <- fetch_fundamentals_data(API_KeyMetrics_path, "Key Metrics")
-  Ratios_TTM <- fetch_fundamentals_data(API_Ratios_TTM_path, "Ratios")
-  Ratios <- fetch_fundamentals_data(API_Ratios_path, "Ratios")
-  
-  # Formatting data
-  IS <- IS %>% 
-    mutate(across(c(date,fillingDate,acceptedDate), as.Date)) %>% 
-    mutate_at(vars(calendarYear), as.integer) 
-  
-  BS <- BS %>% 
-    mutate(across(c(date,fillingDate,acceptedDate), as.Date)) %>% 
-    mutate_at(vars(calendarYear), as.integer)
-  
-  CF <- CF %>% 
-    mutate(across(c(date,fillingDate,acceptedDate), as.Date)) %>% 
-    mutate_at(vars(calendarYear), as.integer) %>% 
-    rename(
-      change_inventory = inventory,
-      change_accountsReceivables = accountsReceivables,
-      change_accountsPayables = accountsPayables,
-      change_otherWorkingCapital = otherWorkingCapital,
-      change_otherNonCashItems = otherNonCashItems
-    )
-  
-  Ratios <- Ratios %>% 
-    mutate_at("date", as.Date)
-  
-  KeyMetrics <- KeyMetrics %>% 
-    mutate_at("date", as.Date)
-  
-  Profile <- Profile %>% 
-    mutate_at(vars(ipoDate), as.Date) %>% 
-    mutate(Statement = "Profile")
-  
-  # Combine all data into a dataframe or a single data frame, depending on your needs
-  # Ensure the 'symbol' column exists and is consistent across all dataframes
-  stopifnot("symbol" %in% colnames(symbols_df))
-  stopifnot("symbol" %in% colnames(IS))
-  stopifnot("symbol" %in% colnames(BS))
-  stopifnot("symbol" %in% colnames(CF))
-  stopifnot("symbol" %in% colnames(KeyMetrics))
-  stopifnot("symbol" %in% colnames(KeyMetrics_TTM))
-  stopifnot("symbol" %in% colnames(Ratios))
-  stopifnot("symbol" %in% colnames(Ratios_TTM))
-
-  
-  # Check for NA values in the key columns
-  sum(is.na(symbols_df$symbol))
-  sum(is.na(IS$symbol))
-  sum(is.na(BS$symbol))
-  sum(is.na(CF$symbol))
-  sum(is.na(Profile$symbol))
-  sum(is.na(KeyMetrics$symbol))
-  sum(is.na(KeyMetrics_TTM$symbol))
-  sum(is.na(Ratios$symbol))
-  sum(is.na(Ratios_TTM$symbol))
-  
-  # Perform joins step-by-step and inspect the results
-  df <- Profile %>%
-    left_join(Ratios_TTM, by="symbol") %>% 
-    left_join(KeyMetrics_TTM) %>% 
-    left_join(Ratios, by = "symbol") %>%
-    left_join(KeyMetrics)
-    
-  fundamentals <- df %>% 
-    left_join(CF, by = c("symbol","date")) %>% 
-    left_join(IS, by = c("symbol","date")) %>%
-    select(-ends_with(".x"), -ends_with(".y")) %>% 
-    left_join(BS, by = c("symbol","date")) %>% 
-    select(-ends_with(".x"), -ends_with(".y"))
-
-  ## Prepare output ----------
-  
-  # Prepare dataframe with necessary columns
-  symbols_df <- symbols_df %>%
-    select(-any_of(c("name", "price")))
-  
-  # Combine dataframes
-  fundamentals <- fundamentals %>% 
-    left_join(symbols_df, by = "symbol")
-  
-  # Get the names of the columns in the combined dataframe
-  column_names <- names(fundamentals)
-  
-  # Find columns that end with ".y"
-  y_columns <- grep("\\.y$", column_names, value = TRUE)
-  
-  # Remove columns with ".y" suffix
-  fundamentals <- fundamentals %>% select(-all_of(y_columns))
-  
-  # Find columns that end with ".x"
-  x_columns <- grep("\\.x$", column_names, value = TRUE)
-  
-  # Remove columns with ".y" suffix
-  fundamentals <- fundamentals %>% select(-all_of(x_columns))
-  
-  return(fundamentals)
+  return(FinancialsMetricsProfile)
 }
 
 get_financial_statements_as_reported_list <- function(symbols_df, period, limit, API_Key) {
