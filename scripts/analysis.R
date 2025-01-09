@@ -15,7 +15,7 @@ excess_cash <- function(df) {
   
   # Calculate median cash over revenue for each year and industry
   median.cash.industry <- df %>%
-    group_by(year, industry) %>%
+    group_by(year, subSector) %>%
     filter(
       !is.na(cashAndShortTermInvestments),
       !is.na(revenue),
@@ -28,7 +28,7 @@ excess_cash <- function(df) {
     ungroup()
   
   # Join the median cash data with the original data frame
-  df <- left_join(df, median.cash.industry, by = c('year', 'industry'))
+  df <- left_join(df, median.cash.industry, by = c('year', 'subSector'))
   
   # Calculate the excess of cash based on different conditions
   df <- df %>%
@@ -406,6 +406,355 @@ ratio_analysis_chart <- function(financial_data_df){
 
 
 
+# Calculate fundamentals TTM -----------------------------------------------------------
+
+library(zoo)
+
+ttm_fundamentals <- function(df, fundamentals) {
+  # Check if inputs are valid
+  if (!all(fundamentals %in% colnames(df))) {
+    stop("One or more fundamentals are not present in the dataframe.")
+  }
+  
+  # Apply TTM calculation for each selected fundamental
+  df <- df %>%
+    group_by(symbol) %>%            # Group by symbol (assuming 'symbol' column exists)
+    arrange(desc(date), .by_group = TRUE) %>% # Sort by date within each group
+    mutate(across(all_of(fundamentals), 
+                  ~rollapply(.x, width = 4, FUN = sum, align = "left", fill = NA),
+                  .names = "{.col}_TTM"))      # Apply rollapply and create new columns
+  
+  return(df)
+}
+# Maintenace CAPEX -----------------------------------------------------------
+maintenance_CAPEX <- function(df) {
+  # Step 1: Initial Calculations - Cumulative Sums
+  # - Group data by ticker to apply cumulative sums starting from the oldest quarter.
+  df <- df %>%
+    group_by(symbol) %>%
+    arrange(desc(date)) %>%
+    mutate(
+      # Reverse cumulative sum of capital expenditure and depreciation to ensure trailing values are from the oldest date.
+      total.capital_expenditure = rev(cumsum(rev(capitalExpenditure))),
+      total.depreciation_amortization = rev(cumsum(rev(depreciationAndAmortization)))
+    ) %>%
+    ungroup()
+  
+  # Step 2: Rolling Averages and Growth CAPEX Calculations
+  # - Group by ticker and apply rolling operations for ratios and growth calculations.
+  df <- df %>%
+    group_by(symbol) %>%
+    arrange(desc(date)) %>%
+    mutate(
+      # Calculate the ratio of revenue to capital employed.
+      ratio.revenue_FixedAsset = coalesce(revenue / (propertyPlantEquipmentNet + otherNonCurrentAssets),0),
+      
+      # Calculate the trailing average of the ratio over the limit.
+      avg_revenue = rollapply(
+        revenue, width = limit, FUN = mean, align = "left", partial = TRUE
+      ),
+      
+      avg_ratio.revenue_FixedAsset = rollapply(
+        ratio.revenue_FixedAsset, width = limit, FUN = mean, align = "left", partial = TRUE
+      ),
+      
+      # Calculate the ratio to avg revenue.
+      avg_ratio.revenue = coalesce(revenue / avg_revenue,0),
+      
+      avg_ratio.revenue = ifelse(avg_ratio.revenue > 1, avg_ratio.revenue, 1),
+      
+      # Calculate the difference in revenue between the first and last periods within the limit.
+      revenue_diff = rollapply(
+        revenue, width = limit, FUN = function(x) -1 * (last(x) - first(x)), align = "left", partial = TRUE
+      ),
+      
+      # Set any negative revenue_diff to zero (representing no growth in revenue).
+      revenue_diff = ifelse(revenue_diff < 0, 0, revenue_diff),
+      
+      # Compute growth CAPEX as the product of average ratio and revenue difference.
+      growth_capex = avg_ratio.revenue_FixedAsset * revenue_diff,
+      
+      # Calculate total maintenance CAPEX by subtracting growth CAPEX from total capital expenditure.
+      total.maintenance_capex = (-1) * total.capital_expenditure - growth_capex,
+      
+      total.maintenance_capex = ifelse(total.maintenance_capex < 0, (-1) * total.capital_expenditure, total.maintenance_capex)
+      
+    ) %>%
+    ungroup()
+  
+  # Step 3: Annualizing Maintenance CAPEX
+  # - Calculate quarter distance from the oldest date and use it to annualize maintenance CAPEX.
+  df <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(
+      # Calculate quarter distance from the earliest date to estimate the length of each maintenance CAPEX period in years.
+      quarter_distance = row_number()
+    ) %>%
+    arrange(desc(date)) %>%
+    mutate(
+      # Annualized maintenance CAPEX by dividing by quarter distance converted to years. Used revenue increase respect to avg as multiplying factor 
+      annualised.maintenance_capex = (coalesce(total.maintenance_capex / (quarter_distance / 4),0) * avg_ratio.revenue)
+    ) %>%
+    ungroup() %>%
+    
+    # Step 4: Output Formatting
+    # - Select specific columns for the final output.
+    select(symbol, date, annualised.maintenance_capex, capitalExpenditure, subSector, sector, SP500, everything())
+  
+  return(df)
+}
+
+# Owner Earnings -----------------------------------------------------------
+ownerEarnings <- function(df){
+  
+  # Calculation Earning Power Greenwald
+  df <- df %>% 
+    group_by(symbol) %>% 
+    arrange(desc(date)) %>% 
+    mutate(
+      
+      # Calculate the cumulative sum of revenue, SG&A, R&D, other expenses, capex, depreciation, income tax, and full equity
+      sum_Revenue = rollapply(
+        revenue, width = limit, FUN = sum, align = "left", partial = TRUE),
+    
+      sust_Revenue.TTM = rollapply(
+        revenue, width = 4, FUN = mean, align = "left", partial = TRUE),
+      
+      sum_SGA = rollapply(
+        sellingGeneralAndAdministrativeExpenses, width = limit, FUN = sum, align = "left", partial = TRUE),
+      
+      sum_RD = rollapply(
+        researchAndDevelopmentExpenses, width = limit, FUN = sum, align = "left", partial = TRUE),
+      
+      sum_Other_Expenses = rollapply(
+        otherExpenses, width = limit, FUN = sum, align = "left", partial = TRUE),
+      
+      sum_Operating_Income = rollapply(
+        operatingIncome, width = limit, FUN = sum, align = "left", partial = TRUE),
+      
+      sum_Capex = rollapply(
+        capitalExpenditure, width = limit, FUN = sum, align = "left", partial = TRUE),
+      
+      sum_Income_Tax = rollapply(
+        incomeTaxExpense, width = limit, FUN = sum, align = "left", partial = TRUE),
+      
+      sum_Income_Before_Tax = rollapply(
+        incomeBeforeTax, width = limit, FUN = sum, align = "left", partial = TRUE)
+      
+    ) %>% 
+    ungroup()
+  
+  df <- df %>% 
+    mutate(
+      avg.SGA_pct = sum_SGA / sum_Revenue,
+      avg.RD_pct = sum_RD / sum_Revenue,
+      avg.Other_Expenses_pct = sum_Other_Expenses / sum_Revenue,
+      avg.Operating_Income_pct = sum_Operating_Income / sum_Revenue,
+      avg.Capex_pct  = sum_Capex / sum_Revenue,
+      avg.Income_Tax_pct = sum_Income_Tax / sum_Income_Before_Tax
+    )
+  
+  # Calculate adjustments
+  df <- df %>% 
+    mutate(
+      adj.SGA = ((sellingGeneralAndAdministrativeExpenses  / revenue) - avg.SGA_pct) * sust_Revenue.TTM,
+      adj.RD = ((researchAndDevelopmentExpenses  / revenue) - avg.RD_pct) * sust_Revenue.TTM,
+      adj.Other_Expenses = ((otherExpenses  / revenue) - avg.Other_Expenses_pct) * sust_Revenue.TTM,
+      adj.Restoring_Assets = (depreciationAndAmortization - annualised.maintenance_capex/4),
+      Earning.Power = (sust_Revenue.TTM * avg.Operating_Income_pct + adj.SGA + adj.RD + adj.Other_Expenses + adj.Restoring_Assets)*(1- avg.Income_Tax_pct)
+    ) %>% 
+    ungroup()
+  
+  
+  # Calculation of Owner Earnings
+  df  <- df %>% 
+    mutate( 
+      Owner.Earnings.Buffet = 
+        netIncome + (depreciationAndAmortization - annualised.maintenance_capex/4) + 
+        stockBasedCompensation + changeInWorkingCapital + deferredIncomeTax,
+      
+      Owner.Earnings.Buffet.IGVI = 
+        netIncome + (depreciationAndAmortization - annualised.maintenance_capex/4) + 
+        changeInWorkingCapital + deferredIncomeTax,
+      
+      Owner.Earnings.IGVI = 
+        netCashProvidedByOperatingActivities - stockBasedCompensation - annualised.maintenance_capex/4 * 1.1,
+    ) 
+  
+  # Calculating output: Earning Power, Owner Earnings, TTM and per Share
+  df <- df %>% 
+    group_by(symbol) %>% 
+    arrange(desc(date)) %>% 
+    mutate(
+      Earning.Power.TTM = rollapply(Earning.Power,
+                                    width = 4, FUN = sum, align = "left", fill = NA)
+    ) %>% 
+    ungroup()
+  
+  df <- df %>% 
+    group_by(symbol) %>% 
+    arrange(desc(date)) %>% 
+    mutate(
+      Earning.Power.per.Share.TTM = Earning.Power.TTM / outstandingShares,
+      
+      Owner.Earnings.Buffet.TTM = rollapply(Owner.Earnings.Buffet,
+                                            width = 4, FUN = sum, align = "left", fill = NA),
+      
+      Owner.Earnings.Buffet.per.Share.TTM = Owner.Earnings.Buffet.TTM / outstandingShares,
+      
+      Owner.Earnings.Buffet.IGVI.TTM = rollapply(Owner.Earnings.Buffet.IGVI,
+                                                 width = 4, FUN = sum, align = "left", fill = NA),
+      
+      Owner.Earnings.Buffet.IGVI.per.Share.TTM = Owner.Earnings.Buffet.IGVI.TTM / outstandingShares,
+      
+      Owner.Earnings.IGVI.TTM = rollapply(Owner.Earnings.IGVI,
+                                          width = 4, FUN = sum, align = "left", fill = NA),
+      
+      Owner.Earnings.IGVI.per.Share.TTM = Owner.Earnings.IGVI.TTM / outstandingShares,
+      
+      marketCap.per.Share = marketCap / outstandingShares
+      
+    ) %>% 
+    ungroup()
+  
+  return(df)
+} 
+# Full Equity CAGR-----------------------------------------------------------
+full_equity_CAGR <- function(df){
+  
+  # 01 - Calculation full Equity growth ------------------------------------------
+  
+  
+  # Calculate full equity and CAGR
+  df <- df %>%
+    group_by(symbol) %>% 
+    arrange(date) %>% # Ensure data is sorted by date
+    mutate(
+      # Get the first (oldest) value of totalStockholdersEquity
+      initial_equity = first(totalStockholdersEquity),
+      
+      # Calculate cumulative sums for required fields up to each row
+      cum_dividends = cumsum(dividendsPaid),
+      cum_issued = cumsum(commonStockIssued),
+      cum_repurchased = cumsum(commonStockRepurchased),
+      
+      # Calculate full equity using the first value of totalStockholdersEquity
+      full_equity = initial_equity + (-1) * cum_dividends - cum_issued + (-1) * cum_repurchased
+    ) %>%
+    # Calculate CAGR
+    mutate(
+      first_full_equity = first(full_equity), # Full equity at the first quarter
+      years_elapsed = as.numeric(difftime(date, first(date), units = "days")) / 365.25,
+      CAGR.full.Equity = ifelse(years_elapsed > 0,
+                                (full_equity / first_full_equity)^(1 / years_elapsed) - 1,
+                                NA_real_) # Avoid divide-by-zero for the first quarter
+    ) %>% 
+    ungroup() %>% 
+    arrange(desc(date))
+  
+  
+  return(df)
+}
+# Negative FCF --------------------------------------------------
+negative_FCF <- function(df){
+  
+  # 01 - Calculation quarters with negative FCF over total no. quarters -----------
+  
+  
+  df <- df %>%
+    group_by(symbol) %>% 
+    arrange(date) %>%  # Ensure data is sorted by date from oldest to latest
+    mutate(
+      # Cumulative count of negative free cash flow quarters
+      cumulative_negative_fc_quarters = cumsum(freeCashFlow < 0),
+      
+      # Cumulative count of total quarters (1, 2, 3, ...)
+      cumulative_total_quarters = row_number(),
+      
+      # Calculate the ratio of negative quarters to total quarters
+      no.quarters.FCF_negative_ratio = cumulative_negative_fc_quarters / cumulative_total_quarters
+    )  %>% 
+    arrange(desc(date)) %>% 
+    ungroup()
+  
+  # Prepare output
+  df <- df %>% 
+    select(
+      symbol, date, price,
+      Earning.Power.per.Share.TTM,
+      Owner.Earnings.Buffet.per.Share.TTM,
+      Owner.Earnings.Buffet.IGVI.per.Share.TTM,
+      Owner.Earnings.IGVI.per.Share.TTM,
+      CAGR.full.Equity,
+      no.quarters.FCF_negative_ratio,
+      everything()
+    )
+  return(df)
+}
+# Multipliers ------------------------
+multipliers <- function(df){
+  
+  # 01 - Calculation of multipliers -----------
+  
+  
+  df <- df %>%
+    mutate(
+      Enterprise.Value.Op.Assets = marketCap + totalLiabilities - goodwillAndIntangibleAssets -
+        excess_cash - 0.5* (otherCurrentAssets + otherNonCurrentAssets),
+      
+      ratio_enterpriseValue = Enterprise.Value.Op.Assets / enterpriseValue,
+      
+      MktCap_EV = marketCap / Enterprise.Value.Op.Assets,
+      
+      Debt_EV = totalDebt / Enterprise.Value.Op.Assets,
+      
+      CurrentAssets_EV = totalCurrentAssets / Enterprise.Value.Op.Assets,
+      
+      NonCurrentAssets_EV = totalNonCurrentAssets / Enterprise.Value.Op.Assets,
+      
+      totalAssets_EV = totalAssets / Enterprise.Value.Op.Assets,
+      
+      ExcessCash_EV = excess_cash / Enterprise.Value.Op.Assets,
+      
+      FCF.4FQ = rollapply(freeCashFlow,
+                          width = 4, FUN = sum, align = "left", fill = NA),
+      
+      Tangible_Equity_book = totalAssets - totalLiabilities - 
+        goodwillAndIntangibleAssets,
+      
+      Equity_Net_Premium = marketCap - Tangible_Equity_book,
+      
+      Equity_Net_premiumToFCF= Equity_Net_Premium / FCF.4FQ,
+      
+      Net.Working.Capital = totalCurrentAssets - excess_cash
+      - (totalCurrentLiabilities - shortTermDebt),
+      
+      NetWorkingCapital_EV = Net.Working.Capital / Enterprise.Value.Op.Assets
+    ) 
+  
+  
+  # Prepare output
+  df <- df %>% 
+    select(
+      symbol, date, price,
+      Earning.Power.per.Share.TTM,
+      Owner.Earnings.Buffet.per.Share.TTM,
+      Owner.Earnings.Buffet.IGVI.per.Share.TTM,
+      Owner.Earnings.IGVI.per.Share.TTM,
+      CAGR.full.Equity,
+      no.quarters.FCF_negative_ratio,
+      ratio_enterpriseValue,
+      MktCap_EV,
+      Debt_EV,
+      totalAssets_EV,
+      NetWorkingCapital_EV,
+      Equity_Net_premiumToFCF,
+      everything()
+    )
+  return(df)
+}
+
 # Capex vs Equity growth --------------------------------------------------
 
 capex_equity_growth_plot <- function(fundamentals_df) {
@@ -418,26 +767,8 @@ capex_equity_growth_plot <- function(fundamentals_df) {
            capex_TTM = rollapply(capex, width = 4, FUN = sum, fill = NA, align = "right")) %>% 
     ungroup()
   
-  # Step 2: Calculate Equity (no TTM, just sum of total equity and dividends)
-  fundamentals_df <- fundamentals_df %>%
-    group_by(symbol) %>% 
-    arrange(date) %>% 
-    mutate(
-      # Get the first (oldest) value of totalStockholdersEquity
-      initial_equity = first(totalStockholdersEquity),
-      
-      # Calculate cumulative sums for required fields up to each row
-      cum_dividends = cumsum(dividendsPaid),
-      cum_issued = cumsum(commonStockIssued),
-      cum_repurchased = cumsum(commonStockRepurchased),
-      
-      
-      # Calculate full equity using the first value of totalStockholdersEquity
-      full_equity = initial_equity + (-1) * cum_dividends - cum_issued + (-1) * cum_repurchased
-    ) %>% 
-    ungroup()
   
-  # Step 3: Calculate Equity Increases  2, 3, 4, 6 years prior
+  # Step 2: Calculate Equity Increases  2, 3, 4, 6 years prior
   fundamentals_df <- fundamentals_df %>%
     group_by(symbol) %>% 
     arrange(desc(date)) %>% 
@@ -453,7 +784,7 @@ capex_equity_growth_plot <- function(fundamentals_df) {
     ungroup()
   
   
-  # Step 4: Calculate Ratios using Capex 
+  # Step 3: Calculate Ratios using Capex 
   fundamentals_df <- fundamentals_df %>%
     group_by(symbol) %>% 
     mutate(
@@ -477,7 +808,7 @@ capex_equity_growth_plot <- function(fundamentals_df) {
     return(x)
   }
   
-  # Step 4.5: Replace outliers with NA for ratios
+  # Step 4: Replace outliers with NA for ratios
   fundamentals_df <- fundamentals_df %>%
     group_by(symbol) %>%  # Apply outlier removal within each symbol group
     mutate(
@@ -493,16 +824,16 @@ capex_equity_growth_plot <- function(fundamentals_df) {
     group_by(symbol) %>%
     summarise(
       full_Equity_increase_capex_corr_2y = ifelse(sum(!is.na(equity_increase_annual) & !is.na(capex_TTM_2y)) > 1, 
-                       cor(equity_increase_annual, capex_TTM_2y, use = "complete.obs"), NA),
+                                                  cor(equity_increase_annual, capex_TTM_2y, use = "complete.obs"), NA),
       full_Equity_increase_capex_corr_3y = ifelse(sum(!is.na(equity_increase_annual) & !is.na(capex_TTM_3y)) > 1, 
-                       cor(equity_increase_annual, capex_TTM_3y, use = "complete.obs"), NA),
+                                                  cor(equity_increase_annual, capex_TTM_3y, use = "complete.obs"), NA),
       full_Equity_increase_capex_corr_4y = ifelse(sum(!is.na(equity_increase_annual) & !is.na(capex_TTM_4y)) > 1, 
-                       cor(equity_increase_annual, capex_TTM_4y, use = "complete.obs"), NA),
+                                                  cor(equity_increase_annual, capex_TTM_4y, use = "complete.obs"), NA),
       full_Equity_increase_capex_corr_8y = ifelse(sum(!is.na(equity_increase_annual) & !is.na(capex_TTM_8y)) > 1, 
-                       cor(equity_increase_annual, capex_TTM_8y, use = "complete.obs"), NA)
+                                                  cor(equity_increase_annual, capex_TTM_8y, use = "complete.obs"), NA)
     ) %>% 
     ungroup()
-
+  
   print(correlation_results)
   
   
@@ -558,23 +889,3 @@ capex_equity_growth_plot <- function(fundamentals_df) {
 
 
 
-# Calculate TTM -----------------------------------------------------------
-
-library(zoo)
-
-ttm_fundamentals <- function(df, fundamentals) {
-  # Check if inputs are valid
-  if (!all(fundamentals %in% colnames(df))) {
-    stop("One or more fundamentals are not present in the dataframe.")
-  }
-  
-  # Apply TTM calculation for each selected fundamental
-  df <- df %>%
-    group_by(symbol) %>%            # Group by symbol (assuming 'symbol' column exists)
-    arrange(desc(date), .by_group = TRUE) %>% # Sort by date within each group
-    mutate(across(all_of(fundamentals), 
-                  ~rollapply(.x, width = 4, FUN = sum, align = "left", fill = NA),
-                  .names = "{.col}_TTM"))      # Apply rollapply and create new columns
-  
-  return(df)
-}

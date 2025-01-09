@@ -9,31 +9,34 @@ source('scripts/utils.R')
 source('scripts/data_retrieval.R')
 source('scripts/analysis.R')
 
-# 02 - Get stock data S&P500, NASDAQ, DOW and Magic Formula ------------------------------------------
+# 02 - Get stock data S&P500, NASDAQ, DOW ------------------------------------------
 symbols_df <- get_stock_data_df(API_Key = API_Key)
+
+## 02.1 - Get stock data of Magic Formula ----------------------------------
 MF_df <- get_MF_data_df(mktCap_limit_lower = 1000, mktCap_limit_upper = 20000, mktCap_step_M = 100)
 
-# 0 - Get historical data of S&P500, NASDAQ, DOW (WIP) ------------------------------------------
+# 03 - Get historical data of S&P500, NASDAQ, DOW (WIP) ------------------------------------------
 hist_SP500_df <- get_hist_index_df(index = "SP500", API_Key)
 hist_NASDAQ_df <- get_hist_index_df(index = "NASDAQ", API_Key)
 hist_DOW_df <- get_hist_index_df(index = "DOW", API_Key)
 
-# 04 - Select companies from www.magicformulainvesting.com (MF) ----------------
-symbols_df_MF <- MF_df %>% 
+# 04 - Select manually stocks -------------------------------------------
+symbols_df <- symbols_df %>% filter(symbol %in% c("WIPKF", "NOMD"))
+
+## 04.1 - Select companies from www.magicformulainvesting.com (MF) ----------------
+symbols_df <- MF_df %>% 
   left_join(symbols_df, by = "symbol") %>% 
   select(-name.x) %>% 
   rename(name = name.y) %>% 
   select(name, everything())
 
-# 05 - Select manually stocks -------------------------------------------
-symbols_df <- symbols_df %>% filter(symbol %in% c("NKE", "LNNGY", "LULU"))
-# symbols_df <- symbols_df_MF
-
 # 06 - Get fundamentals of selected stocks -------------------------
-fundamentals_df_original <- get_fundamentals_data_df(symbols_df, period = "quarter", 
-                                            limit = 60, API_Key = API_Key)
+limit = 60
+period = "quarter"
+fundamentals_df_original <- get_fundamentals_data_df(symbols_df, period, 
+                                            limit, API_Key = API_Key)
 
-fundamentals_df <- Reduce_FinancialsMetricsProfile(fundamentals_df_original)
+fundamentals_df <- reduce_financialsMetricsProfile(fundamentals_df_original)
 
 fundamentals_df <- ttm_fundamentals(fundamentals_df, 
                                     fundamentals = c("revenue",
@@ -49,20 +52,8 @@ fundamentals_df <- ttm_fundamentals(fundamentals_df,
                                                      "commonStockIssued",
                                                      "commonStockRepurchased"))
 
-Stock_Comparative_analysis<-fundamentals_df %>% filter(symbol=="NKE") %>% select(date,symbol,
-                                                          revenue_TTM,costOfRevenue_TTM,
-                                                          sellingGeneralAndAdministrativeExpenses_TTM,
-                                                          otherExpenses_TTM,
-                                                          researchAndDevelopmentExpenses_TTM,
-                                                          operatingIncome_TTM,
-                                                          incomeTaxExpense_TTM,
-                                                          netIncome_TTM,
-                                                          operatingCashFlow_TTM,
-                                                          dividendsPaid_TTM,
-                                                          commonStockIssued_TTM,
-                                                          commonStockRepurchased_TTM)
-
-Stock_Comparative_analysis <- Stock_Comparative_analysis %>% mutate(across(.col = where(is.numeric), .fns = ~ . / 1e6))
+df<- print_fundamentals_TTM(df = fundamentals_df,
+                 Ticker= "WIPKF")
 
 # 06 - Get price and quote data of selected stocks -------------------------
 quote_data_df <- get_quote_data_df(symbols_df, API_Key = API_Key)
@@ -87,12 +78,22 @@ price_history_data_df <- get_price_history_data_df(symbols_df, startDate = histo
 # 
 # 
 
-# 07 - Magic Formula Ranking ---------------------------------------------
+# 07 - Combine fundamentals and quotes ------------------------------------
 data_df <- left_join(fundamentals_df, quote_data_df)
-df_MF_rank <- calculate_MF_ranking(data_df)
-export_excel_data(df_MF_rank)
 
-# 08 - Ratio analysis --------------------------------------------------------
+# 08 - Magic Formula Ranking ---------------------------------------------
+df_MF_rank <- calculate_MF_ranking(data_df)
+export_excel_data(df_MF_rank, "MF_Rank")
+
+# 09 - Maintenance CAPEX, Owner Earnings, Full Equity Growth-----------------------------------------------------
+fundamentals_df <- excess_cash(fundamentals_df)
+fundamentals_df <- maintenance_CAPEX(fundamentals_df)
+fundamentals_df <- ownerEarnings(fundamentals_df)
+fundamentals_df <- full_equity_CAGR(fundamentals_df)
+fundamentals_df <- negative_FCF(fundamentals_df)
+fundamentals_df <- multipliers(fundamentals_df)
+
+# 09 - Ratio analysis --------------------------------------------------------
 
 # Select companies for ratio analysis (max 5 companies e.g. peers)
 df_ratio <- fundamentals_df
@@ -112,4 +113,5 @@ ratio_analysis_plot$debt_coverage_plot
 
 # 09 - Capex Equity growth ----------------------------------------------------------
 capex_equity_growth_plot(fundamentals_df)
+
 

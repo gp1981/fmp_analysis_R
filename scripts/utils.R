@@ -46,7 +46,7 @@ historical_dates <- data.frame(
 
 ## Export data into xlsx table -------------------------------------------------
 
-export_excel_data <- function(DF1) {
+export_excel_data <- function(DF1, new_suffix = "") {
   
   ## Create workbook
   wb <- createWorkbook()
@@ -54,25 +54,25 @@ export_excel_data <- function(DF1) {
   ## Add worksheets
   addWorksheet(wb, "Data")
   
-  
-  # Write DF1 and DF2 to worksheet if provided
-  
+  ## Write DF1 to the worksheet
   writeDataTable(
     wb,
     "Data",
     x = as.data.frame(DF1),
     colNames = TRUE,
     tableStyle = "TableStyleLight9",
-    tableName = "Data_US_Stocks"
+    tableName = "Data"
   )
   
+  ## Construct the filename with the new_suffix
+  file_name <- paste0("data/dataset_",new_suffix, format(Sys.Date(), "%Y%m%d"), ".xlsx")
   
-  # Save workbook
-  saveWorkbook(wb,
-               file = paste0("data/dataset_", format(Sys.Date(), "%Y%m%d"), ".xlsx"), 
-               overwrite = TRUE)
-  # Check https://cran.r-project.org/web/packages/openxlsx/openxlsx.pdf
+  ## Save workbook
+  saveWorkbook(wb, file = file_name, overwrite = TRUE)
+  
+  ## Check https://cran.r-project.org/web/packages/openxlsx/openxlsx.pdf
 }
+
 ## Function to search for specific word in column names and retrieve matching columns ----
 
 # Function to ensure columns have consistent types
@@ -147,8 +147,8 @@ extract_specific_variables <- function(df_list, variables) {
 }
 
 # Reduce the list "FinancialsMetricsProfile" and remove columns with suffixes ".1", ".2", ".x", ".y" that are duplicates or wrong matches
-Reduce_FinancialsMetricsProfile <- function(FinancialsMetricsProfile) {
-
+reduce_financialsMetricsProfile <- function(FinancialsMetricsProfile) {
+  
   FinancialsMetricsProfile$IncomeStatement <- FinancialsMetricsProfile$IncomeStatement %>% 
     mutate(
       date = as.Date(date),
@@ -199,7 +199,7 @@ Reduce_FinancialsMetricsProfile <- function(FinancialsMetricsProfile) {
   DF_Ratios <- FinancialsMetricsProfile$Ratios
   DF_Shares_Float <- FinancialsMetricsProfile$Shares_Float
   DF_ST <- FinancialsMetricsProfile$symbols_df
-
+  
   
   DF <- DF_ST %>%  
     left_join(DF_Ratios_TTM, by = c("symbol"))
@@ -250,5 +250,30 @@ Reduce_FinancialsMetricsProfile <- function(FinancialsMetricsProfile) {
     mutate(outstandingShares = ifelse(is.na(outstandingShares), weightedAverageShsOutDil, outstandingShares))
   
   return(DF)
+}
+
+
+
+## Extract TTM  fundamentals -----------------------------------------------
+print_fundamentals_TTM <- function(df, Ticker){
+  df <- df %>% 
+    filter(symbol== Ticker) %>% select(date,symbol,
+                                       revenue_TTM,
+                                       costOfRevenue_TTM,
+                                       sellingGeneralAndAdministrativeExpenses_TTM, 
+                                       otherExpenses_TTM,
+                                       researchAndDevelopmentExpenses_TTM,
+                                       operatingIncome_TTM, 
+                                       incomeTaxExpense_TTM,
+                                       netIncome_TTM,
+                                       operatingCashFlow_TTM,
+                                       dividendsPaid_TTM,
+                                       commonStockIssued_TTM,
+                                       commonStockRepurchased_TTM)
+  
+  df <- df %>% mutate(across(.cols = where(is.numeric), .fns = ~ . /1e06))
+  
+  export_excel_data(df)
+  return(df)
 }
 
