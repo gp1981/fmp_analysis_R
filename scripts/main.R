@@ -21,7 +21,7 @@ hist_NASDAQ_df <- get_hist_index_df(index = "NASDAQ", API_Key)
 hist_DOW_df <- get_hist_index_df(index = "DOW", API_Key)
 
 # 04 - Select manually stocks -------------------------------------------
-symbols_df <- symbols_df %>% filter(symbol %in% c("WIPKF", "NOMD"))
+symbols_df <- symbols_df %>% filter(symbol %in% c("NOMD"))
 
 ## 04.1 - Select companies from www.magicformulainvesting.com (MF) ----------------
 symbols_df <- MF_df %>% 
@@ -45,15 +45,23 @@ fundamentals_df <- ttm_fundamentals(fundamentals_df,
                                                      "otherExpenses",
                                                      "researchAndDevelopmentExpenses",
                                                      "operatingIncome",
+                                                     "interestExpense",
                                                      "incomeTaxExpense",
                                                      "netIncome",
                                                      "operatingCashFlow",
                                                      "dividendsPaid",
                                                      "commonStockIssued",
-                                                     "commonStockRepurchased"))
+                                                     "commonStockRepurchased",
+                                                     "depreciationAndAmortization",
+                                                     "capitalExpenditure"))
 
-df<- print_fundamentals_TTM(df = fundamentals_df,
-                 Ticker= "WIPKF")
+
+fundamentals_df_TTM <- fundamentals_df %>%
+  select(date,symbol, ends_with("_TTM")) %>%
+  filter(month(date) == 9)  # to change based on TTM
+
+df<- print_fundamentals_TTM(df = fundamentals_df_TTM,
+                 Ticker= "NOMD")
 
 # 06 - Get price and quote data of selected stocks -------------------------
 quote_data_df <- get_quote_data_df(symbols_df, API_Key = API_Key)
