@@ -173,6 +173,11 @@ reduce_financialsMetricsProfile <- function(FinancialsMetricsProfile) {
       calendarYear = as.integer(calendarYear)
     )
   
+  FinancialsMetricsProfile$Profile <- FinancialsMetricsProfile$Profile %>% 
+    mutate(
+      ipoDate = as.Date(ipoDate),
+      )
+  
   FinancialsMetricsProfile$KeyMetrics <- FinancialsMetricsProfile$KeyMetrics %>% 
     mutate(
       date = as.Date(date),
@@ -193,6 +198,7 @@ reduce_financialsMetricsProfile <- function(FinancialsMetricsProfile) {
   DF_IS <- FinancialsMetricsProfile$IncomeStatement
   DF_BS <- FinancialsMetricsProfile$BalanceSheet
   DF_CF <- FinancialsMetricsProfile$CashFlow
+  DF_Profile <- FinancialsMetricsProfile$Profile
   DF_KM_TTM <- FinancialsMetricsProfile$KeyMetrics_TTM
   DF_KM <- FinancialsMetricsProfile$KeyMetrics
   DF_Ratios_TTM <- FinancialsMetricsProfile$Ratios_TTM
@@ -200,9 +206,13 @@ reduce_financialsMetricsProfile <- function(FinancialsMetricsProfile) {
   DF_Shares_Float <- FinancialsMetricsProfile$Shares_Float
   DF_ST <- FinancialsMetricsProfile$symbols_df
   
+  DF <- DF_Profile %>%  
+    left_join(DF_ST)
   
-  DF <- DF_ST %>%  
-    left_join(DF_Ratios_TTM, by = c("symbol"))
+  DF <- DF %>%  
+    left_join(DF_Ratios_TTM, by = c("symbol")) %>% 
+    select(-ends_with(".y")) %>%  # Remove .y columns
+    rename_with(~ gsub("\\.x$", "", .), ends_with(".x"))  # Rename .x columns by removing the suffix
   
   DF <- DF %>% 
     left_join(DF_KM_TTM, by = c("symbol")) %>% 

@@ -83,21 +83,14 @@ calculate_MF_ranking <- function(df){
                             width = 4, FUN = sum, align = "left", fill = NA),
     ) %>% ungroup()
   
-  ## 02 - Calculation of excess of cash based on industry statistics
-  
-  df <- excess_cash(df)
-  
-  ## 03 - Calculation of FCF to Equity Net Premium
+  ## 02 - Calculation of FCF to Equity Net Premium
   
   df <- df %>% 
     mutate(Tangible_Equity_book = totalAssets - totalLiabilities - 
              goodwillAndIntangibleAssets,
            
-           Equity_Net_Premium = mktCap - Tangible_Equity_book,
-           
-           Equity_Net_premiumToFCF = Equity_Net_Premium / FCF.4FQ) %>% 
-    
-    mutate(Net_Working_Capital = (totalCurrentAssets - excess_cash) - (totalCurrentLiabilities - shortTermDebt),
+           Net_Working_Capital = (totalCurrentAssets - excess_cash) - 
+             (totalCurrentLiabilities - shortTermDebt),
            
            Tangible_Capital_Employed = totalAssets - (otherCurrentAssets + 
                                                         otherNonCurrentAssets +
@@ -106,17 +99,17 @@ calculate_MF_ranking <- function(df){
              (totalCurrentLiabilities - 
                 shortTermDebt - 
                 deferredRevenue - 
-                0.5 * otherCurrentLiabilities)
-    ) %>% 
-    
-    mutate(Return_On_Capital_Employed = EBIT.4FQ / Tangible_Capital_Employed,
-           Net_Interest_Bearing_Debt = totalDebt + capitalLeaseObligations) %>% 
-    
-    mutate(Enterprise_Value = mktCap + Net_Interest_Bearing_Debt + 
-             minorityInterest + preferredStock) %>% 
-    
-    mutate(Earnings_Yield = EBIT.4FQ / Enterprise_Value)
-    
+                0.5 * otherCurrentLiabilities),
+           
+           Return_On_Capital_Employed = EBIT.4FQ / Tangible_Capital_Employed,
+           
+           Net_Interest_Bearing_Debt = totalDebt + capitalLeaseObligations,
+           
+           Enterprise_Value = mktCap + Net_Interest_Bearing_Debt + 
+             minorityInterest + preferredStock,
+           
+           Earnings_Yield = EBIT.4FQ / Enterprise_Value)
+  
   ## 04 - Calculation of MF Earnings Yield and Return on Capital
   df <- EY_ROCE_ranking(df)
   
@@ -124,7 +117,7 @@ calculate_MF_ranking <- function(df){
     select(date, symbol, companyName, 
            country, price, Market_Cap_Millions,Rank_EY_ROCE, Earnings_Yield, 
            Return_On_Capital_Employed, priceEarningsRatioTTM, priceBookValueRatioTTM, pbRatioTTM,
-           totalDebtToCapitalizationTTM, debtRatioTTM, debtEquityRatioTTM,  FCFtoEquity_Net_premium,
+           totalDebtToCapitalizationTTM, debtRatioTTM, debtEquityRatioTTM,  Equity_Net_premiumToFCF,
            currentRatioTTM, quickRatioTTM, cashRatioTTM, returnOnEquityTTM, returnOnAssetsTTM, returnOnCapitalEmployedTTM, 
            everything()) %>% 
     arrange(Rank_EY_ROCE)
@@ -173,7 +166,7 @@ EY_ROCE_ranking <- function(df){
            Market_Cap_Millions,Rank_EY_ROCE, Earnings_Yield, Return_On_Capital_Employed,
            priceEarningsRatioTTM, priceBookValueRatioTTM,
            totalDebtToCapitalizationTTM, debtRatioTTM, debtEquityRatioTTM,
-           FCFtoEquity_Net_premium, Equity_Net_Premium,  
+           Equity_Net_premiumToFCF, Equity_Net_Premium,  
            EBIT.4FQ, Tangible_Capital_Employed,
            Net_Working_Capital, excess_cash, everything()
     )%>% 
@@ -517,7 +510,7 @@ ownerEarnings <- function(df){
       # Calculate the cumulative sum of revenue, SG&A, R&D, other expenses, capex, depreciation, income tax, and full equity
       sum_Revenue = rollapply(
         revenue, width = limit, FUN = sum, align = "left", partial = TRUE),
-    
+      
       sust_Revenue.TTM = rollapply(
         revenue, width = 4, FUN = mean, align = "left", partial = TRUE),
       
@@ -613,7 +606,7 @@ ownerEarnings <- function(df){
       
       Owner.Earnings.IGVI.per.Share.TTM = Owner.Earnings.IGVI.TTM / outstandingShares,
       
-      marketCap.per.Share = marketCap / outstandingShares
+      mktCap.per.Share = mktCap / outstandingShares
       
     ) %>% 
     ungroup()
@@ -700,12 +693,12 @@ multipliers <- function(df){
   
   df <- df %>%
     mutate(
-      Enterprise.Value.Op.Assets = marketCap + totalLiabilities - goodwillAndIntangibleAssets -
+      Enterprise.Value.Op.Assets = mktCap + totalLiabilities - goodwillAndIntangibleAssets -
         excess_cash - 0.5* (otherCurrentAssets + otherNonCurrentAssets),
       
       ratio_enterpriseValue = Enterprise.Value.Op.Assets / enterpriseValue,
       
-      MktCap_EV = marketCap / Enterprise.Value.Op.Assets,
+      MktCap_EV = mktCap / Enterprise.Value.Op.Assets,
       
       Debt_EV = totalDebt / Enterprise.Value.Op.Assets,
       
@@ -723,7 +716,7 @@ multipliers <- function(df){
       Tangible_Equity_book = totalAssets - totalLiabilities - 
         goodwillAndIntangibleAssets,
       
-      Equity_Net_Premium = marketCap - Tangible_Equity_book,
+      Equity_Net_Premium = mktCap - Tangible_Equity_book,
       
       Equity_Net_premiumToFCF= Equity_Net_Premium / FCF.4FQ,
       

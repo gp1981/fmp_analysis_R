@@ -75,6 +75,7 @@ get_fundamentals_data_df <- function(symbols_df, API_Key, period, limit){
   API_IncomeStatement_path_base <- 'https://financialmodelingprep.com/api/v3/income-statement/'
   API_BalanceSheet_path_base <- 'https://financialmodelingprep.com/api/v3/balance-sheet-statement/'
   API_CashFlow_path_base <- 'https://financialmodelingprep.com/api/v3/cash-flow-statement/'
+  API_Profile_path_base <- 'https://financialmodelingprep.com/api/v3/profile/'
   API_KeyMetrics_TTM_path_base <- 'https://financialmodelingprep.com/api/v3/key-metrics-ttm/'
   API_KeyMetrics_path_base <- 'https://financialmodelingprep.com/api/v3/key-metrics/'
   API_Ratios_TTM_path_base <- 'https://financialmodelingprep.com/api/v3/ratios-ttm/'
@@ -99,6 +100,7 @@ get_fundamentals_data_df <- function(symbols_df, API_Key, period, limit){
   IS_list <- list()
   BS_list <- list()
   CF_list <- list()
+  Profile <- list()
   KeyMetrics_list_TTM <- list()
   KeyMetrics_list <- list()
   Ratios_TTM <- list()
@@ -116,6 +118,7 @@ get_fundamentals_data_df <- function(symbols_df, API_Key, period, limit){
     API_IncomeStatement_path <- paste0(API_IncomeStatement_path_base, symbol, API_IncomeStatement_path_suffix, period,  '&limit=', limit, '&apikey=', API_Key)
     API_BalanceSheet_path <- paste0(API_BalanceSheet_path_base, symbol, API_BalanceSheet_path_suffix, period, '&limit=', limit, '&apikey=', API_Key)
     API_CashFlow_path <- paste0(API_CashFlow_path_base, symbol, API_CashFlow_path_suffix, period, '&limit=', limit, '&apikey=', API_Key)
+    API_Profile_path <- paste0(API_Profile_path_base, symbol, '?apikey=', API_Key)
     API_KeyMetrics_TTM_path <- paste0(API_KeyMetrics_TTM_path_base, symbol, '?apikey=', API_Key)
     API_KeyMetrics_path <- paste0(API_KeyMetrics_path_base, symbol,API_KeyMetrics_path_suffix, period, '&limit=', limit, '&apikey=', API_Key)
     API_Ratios_TTM_path <- paste0(API_Ratios_TTM_path_base, symbol, '?apikey=', API_Key)
@@ -126,6 +129,7 @@ get_fundamentals_data_df <- function(symbols_df, API_Key, period, limit){
       IS = NULL,
       BS = NULL,
       CF = NULL,
+      Profile = NULL,
       KM_TTM = NULL,
       KM = NULL,
       Ratios_TTM = NULL,
@@ -150,6 +154,13 @@ get_fundamentals_data_df <- function(symbols_df, API_Key, period, limit){
       Stock_CashFlow_temp <- fromJSON(API_CashFlow_path)
       if (length(Stock_CashFlow_temp) > 0) {
         result$CF <- data.frame(Stock_CashFlow_temp)
+      }
+      
+      # Retrieve Profile
+      Stock_Profile_temp <- fromJSON(API_Profile_path)
+      if (length(Stock_Profile_temp) > 0) {
+        result$Profile <- data.frame(Stock_Profile_temp)
+        result$Profile$symbol <- symbol # Add ticker column
       }
       
       # Retrieve Key Metrics TTM
@@ -208,6 +219,7 @@ get_fundamentals_data_df <- function(symbols_df, API_Key, period, limit){
   IS <- bind_rows(lapply(results, function(x) x$IS))
   BS <- bind_rows(lapply(results, function(x) x$BS))
   CF <- bind_rows(lapply(results, function(x) x$CF))
+  Profile <- bind_rows(lapply(results, function(x) x$Profile))
   KeyMetrics_TTM <- bind_rows(lapply(results, function(x) x$KM_TTM))
   KeyMetrics <- bind_rows(lapply(results, function(x) x$KM))
   Ratios_TTM  <- bind_rows(lapply(results, function(x) x$Ratios_TTM))
@@ -223,6 +235,9 @@ get_fundamentals_data_df <- function(symbols_df, API_Key, period, limit){
   }
   if ("symbol" %in% colnames(CF)) {
     CF <- CF %>% rename(symbol = symbol)
+  }
+  if ("symbol" %in% colnames(Profile)) {
+    Profile <- Profile %>% rename(symbol = symbol)
   }
   if ("symbol" %in% colnames(KeyMetrics_TTM)) {
     KeyMetrics_TTM <- KeyMetrics_TTM %>% rename(symbol = symbol)
@@ -244,6 +259,7 @@ get_fundamentals_data_df <- function(symbols_df, API_Key, period, limit){
     IncomeStatement = IS,
     BalanceSheet = BS,
     CashFlow = CF,
+    Profile = Profile,
     KeyMetrics_TTM = KeyMetrics_TTM,
     KeyMetrics = KeyMetrics,
     Ratios_TTM = Ratios_TTM,

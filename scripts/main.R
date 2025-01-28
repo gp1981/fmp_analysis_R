@@ -21,7 +21,7 @@ hist_NASDAQ_df <- get_hist_index_df(index = "NASDAQ", API_Key)
 hist_DOW_df <- get_hist_index_df(index = "DOW", API_Key)
 
 # 04 - Select manually stocks -------------------------------------------
-symbols_df <- symbols_df %>% filter(symbol %in% c("NOMD"))
+symbols_df <- symbols_df %>% filter(symbol %in% c("ARLP","CNR","BTU","NRP"))
 
 ## 04.1 - Select companies from www.magicformulainvesting.com (MF) ----------------
 symbols_df <- MF_df %>% 
@@ -57,8 +57,9 @@ fundamentals_df <- ttm_fundamentals(fundamentals_df,
 
 
 fundamentals_df_TTM <- fundamentals_df %>%
-  select(date,symbol, ends_with("_TTM")) %>%
-  filter(month(date) == 9)  # to change based on TTM
+  select(date,symbol, ends_with("_TTM")) 
+# %>%
+#   filter(month(date) == 9)  # to change based on TTM
 
 df<- print_fundamentals_TTM(df = fundamentals_df_TTM,
                  Ticker= "NOMD")
@@ -85,15 +86,7 @@ price_history_data_df <- get_price_history_data_df(symbols_df, startDate = histo
 # 
 # 
 # 
-
-# 07 - Combine fundamentals and quotes ------------------------------------
-data_df <- left_join(fundamentals_df, quote_data_df)
-
-# 08 - Magic Formula Ranking ---------------------------------------------
-df_MF_rank <- calculate_MF_ranking(data_df)
-export_excel_data(df_MF_rank, "MF_Rank")
-
-# 09 - Maintenance CAPEX, Owner Earnings, Full Equity Growth-----------------------------------------------------
+# 07 - Maintenance CAPEX, Owner Earnings, Full Equity Growth-----------------------------------------------------
 fundamentals_df <- excess_cash(fundamentals_df)
 fundamentals_df <- maintenance_CAPEX(fundamentals_df)
 fundamentals_df <- ownerEarnings(fundamentals_df)
@@ -101,6 +94,15 @@ fundamentals_df <- full_equity_CAGR(fundamentals_df)
 fundamentals_df <- negative_FCF(fundamentals_df)
 fundamentals_df <- multipliers(fundamentals_df)
 
+
+export_excel_data(fundamentals_df)
+
+# 08 - Combine fundamentals and quotes ------------------------------------
+data_df <- left_join(fundamentals_df, quote_data_df)
+
+# 09 - Magic Formula Ranking ---------------------------------------------
+df_MF_rank <- calculate_MF_ranking(data_df)
+export_excel_data(df_MF_rank, "MF_Rank")
 # 09 - Ratio analysis --------------------------------------------------------
 
 # Select companies for ratio analysis (max 5 companies e.g. peers)
