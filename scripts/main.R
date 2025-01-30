@@ -94,7 +94,6 @@ fundamentals_df <- full_equity_CAGR(fundamentals_df)
 fundamentals_df <- negative_FCF(fundamentals_df)
 fundamentals_df <- multipliers(fundamentals_df)
 
-
 export_excel_data(fundamentals_df)
 
 # 08 - Combine fundamentals and quotes ------------------------------------

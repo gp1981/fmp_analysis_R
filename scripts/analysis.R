@@ -115,10 +115,16 @@ calculate_MF_ranking <- function(df){
   
   df <- df %>% 
     select(date, symbol, companyName, 
-           country, price, Market_Cap_Millions,Rank_EY_ROCE, Earnings_Yield, 
-           Return_On_Capital_Employed, priceEarningsRatioTTM, priceBookValueRatioTTM, pbRatioTTM,
-           totalDebtToCapitalizationTTM, debtRatioTTM, debtEquityRatioTTM,  Equity_Net_premiumToFCF,
+           country, price, Market_Cap_Millions,Rank_EY_ROCE,
+           Earning.Power.per.Share.TTM,
+           Owner.Earnings.Buffet.per.Share.TTM,
+           Owner.Earnings.Buffet.IGVI.per.Share.TTM,
+           Owner.Earnings.IGVI.per.Share.TTM,
+           Earnings_Yield, Return_On_Capital_Employed, priceEarningsRatioTTM, 
+           priceBookValueRatioTTM, pbRatioTTM,Equity_Net_premiumToFCF,MktCap_EV,
+           totalDebtToCapitalizationTTM, debtRatioTTM, debtEquityRatioTTM, Debt_EV, 
            currentRatioTTM, quickRatioTTM, cashRatioTTM, returnOnEquityTTM, returnOnAssetsTTM, returnOnCapitalEmployedTTM, 
+           CAGR.full.Equity,no.quarters.FCF_negative_ratio,
            everything()) %>% 
     arrange(Rank_EY_ROCE)
   
