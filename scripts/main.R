@@ -21,7 +21,7 @@ hist_NASDAQ_df <- get_hist_index_df(index = "NASDAQ", API_Key)
 hist_DOW_df <- get_hist_index_df(index = "DOW", API_Key)
 
 # 04 - Select manually stocks -------------------------------------------
-symbols_df <- symbols_df %>% filter(symbol %in% c("ARLP","CNR","BTU","NRP"))
+# symbols_df <- symbols_df %>% filter(symbol %in% c("ARLP","CNR","BTU","NRP"))
 
 ## 04.1 - Select companies from www.magicformulainvesting.com (MF) ----------------
 symbols_df <- MF_df %>% 
@@ -56,17 +56,17 @@ fundamentals_df <- ttm_fundamentals(fundamentals_df,
                                                      "capitalExpenditure"))
 
 
-fundamentals_df_TTM <- fundamentals_df %>%
-  select(date,symbol, ends_with("_TTM")) 
-# %>%
-#   filter(month(date) == 9)  # to change based on TTM
-
-df<- print_fundamentals_TTM(df = fundamentals_df_TTM,
-                 Ticker= "NOMD")
+# fundamentals_df_TTM <- fundamentals_df %>%
+#   select(date,symbol, ends_with("_TTM")) 
+# # %>%
+# #   filter(month(date) == 9)  # to change based on TTM
+# 
+# df<- print_fundamentals_TTM(df = fundamentals_df_TTM,
+#                  Ticker= "NOMD")
 
 # 06 - Get price and quote data of selected stocks -------------------------
 quote_data_df <- get_quote_data_df(symbols_df, API_Key = API_Key)
-price_history_data_df <- get_price_history_data_df(symbols_df, startDate = historical_dates$date_20Y, endDate = today(), API_Key = API_Key)
+# price_history_data_df <- get_price_history_data_df(symbols_df, startDate = historical_dates$date_20Y, endDate = today(), API_Key = API_Key)
 
 
 # 0X - Get filing as reported from fmp (WIP) ------------------

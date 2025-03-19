@@ -113,8 +113,25 @@ calculate_MF_ranking <- function(df){
   ## 04 - Calculation of MF Earnings Yield and Return on Capital
   df <- EY_ROCE_ranking(df)
   
+  ## 05 - Create risk code
   df <- df %>% 
-    select(date, symbol, companyName, 
+    mutate(Risk.Code = case_when(
+      quickRatioTTM >= 2 & 
+        cashRatioTTM >= 1 & 
+        debtToEquityTTM <= 0.33 & 
+        debtToAssetsTTM <= 0.2 ~ "GREEN",
+      
+      quickRatioTTM >= 1 & 
+        cashRatioTTM >= 0.3 & 
+        debtToEquityTTM <= 1 &
+        debtToAssetsTTM <= 0.35 ~ "YELLOW",
+      
+      TRUE ~ "RED"
+    ))
+    
+  ## 06 - Prepare output
+  df <- df %>% 
+    select(date, symbol, companyName, Risk.Code,
            country, price, Market_Cap_Millions,Rank_EY_ROCE,
            Earning.Power.per.Share.TTM,
            Owner.Earnings.Buffet.per.Share.TTM,
