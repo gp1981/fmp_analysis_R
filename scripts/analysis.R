@@ -903,5 +903,54 @@ capex_equity_growth_plot <- function(fundamentals_df) {
   return(p)
 }
 
+# Seasonality --------------------------------------------------
+seasonality <- function(fundamentals_df){
+  library(tidyverse)
+  library(lubridate)
+  
+  # Sample structure assumption
+  # fundamentals_df <- data.frame(
+  #   date = as.Date(c("2020-03-31", "2020-06-30", "2020-09-30", "2020-12-31", ...)),
+  #   revenue = c(...),
+  #   grossProfit = c(...),
+  #   operatingIncome = c(...),
+  #   netIncome = c(...)
+  # )
+  
+  # Step 1: Add a 'quarter' column
+  fundamentals_seasonality <- fundamentals_df %>%
+    mutate(
+      quarter = quarter(date, with_year = FALSE, fiscal_start = 1) %>% factor(levels = 1:4, labels = c("Q1", "Q2", "Q3", "Q4"))
+    )
+  
+  # Step 2: Pivot longer for plotting
+  fundamentals_long <- fundamentals_seasonality %>%
+    pivot_longer(
+      cols = c(revenue, grossProfit, operatingIncome, netIncome),
+      names_to = "metric",
+      values_to = "value"
+    ) %>%
+    mutate(
+      value = value / 1e6,  # Convert to millions
+      metric = factor(metric, levels = c("revenue", "grossProfit", "operatingIncome", "netIncome"))
+    )
+  
+  # Step 3: Plot boxplots of each metric across quarters
+  ggplot(fundamentals_long, aes(x = quarter, y = value)) +
+    geom_boxplot(fill = "steelblue", color = "darkblue", outlier.color = "red", outlier.shape = 1) +
+    facet_wrap(~ metric, scales = "free_y") +
+    labs(
+      title = "Seasonality of Financial Metrics by Quarter",
+      x = "Quarter",
+      y = "Value ($M)",
+      caption = "Source: fundamentals_df"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      strip.background = element_rect(fill = "lightgrey", color = NA),
+      strip.text = element_text(face = "bold")
+    )
+  
+}
 
 
