@@ -21,7 +21,7 @@ hist_NASDAQ_df <- get_hist_index_df(index = "NASDAQ", API_Key)
 hist_DOW_df <- get_hist_index_df(index = "DOW", API_Key)
 
 # 04 - Select manually stocks -------------------------------------------
-# symbols_df <- symbols_df %>% filter(symbol %in% c("ARLP","CNR","BTU","NRP"))
+symbols_df <- symbols_df %>% filter(symbol %in% c("CRUS"))
 
 ## 04.1 - Select companies from www.magicformulainvesting.com (MF) ----------------
 symbols_df <- MF_df %>% 
@@ -56,8 +56,8 @@ fundamentals_df <- ttm_fundamentals(fundamentals_df,
                                                      "capitalExpenditure"))
 
 
-# fundamentals_df_TTM <- fundamentals_df %>%
-#   select(date,symbol, ends_with("_TTM")) 
+fundamentals_df_TTM <- fundamentals_df %>%
+  select(date,symbol, ends_with("_TTM"))
 # # %>%
 # #   filter(month(date) == 9)  # to change based on TTM
 # 
@@ -123,4 +123,6 @@ ratio_analysis_plot$debt_coverage_plot
 # 09 - Capex Equity growth ----------------------------------------------------------
 capex_equity_growth_plot(fundamentals_df)
 
+# 10 - Seasonality
+seasonsality(fundamentals_df)
 

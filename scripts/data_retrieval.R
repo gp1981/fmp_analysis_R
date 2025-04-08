@@ -7,18 +7,13 @@
 
 ## 01.1 - Get data from fmp ----------------------------------------
 get_stock_data_df <- function(API_Key){
+  
   # Prepare URL for accessing Symbol List API
-  Symbol_List_API_path <- "https://financialmodelingprep.com/api/v3/stock/list?apikey="
+  Symbol_List_API_path <- "https://financialmodelingprep.com/stable/financial-statement-symbol-list?apikey="
   Symbol_List_API_path <- paste0(Symbol_List_API_path, API_Key)
   
   # Download stock list data via API
   Symbol_List <- fromJSON(Symbol_List_API_path)
-  
-  # Download financial statement symbol lists via API
-  Financial_Statement_Symbol_List <- "https://financialmodelingprep.com/api/v3/financial-statement-symbol-lists?apikey="
-  Financial_Statement_Symbol_List <- paste0(Financial_Statement_Symbol_List, API_Key)
-  Financial_Statement_Symbol_List <- fromJSON(Financial_Statement_Symbol_List)
-  
   
   # Download S&P500 constituent list via API
   SP500_Symbol_list <- "https://financialmodelingprep.com/api/v3/sp500_constituent?apikey="
@@ -37,15 +32,9 @@ get_stock_data_df <- function(API_Key){
   
   # Convert JSON data into data frames
   symbol_df <- as.data.frame(Symbol_List)
-  Financial_Statement_symbol_df <- as.data.frame(Financial_Statement_Symbol_List)
   SP500_symbol_df <- as.data.frame(SP500_Symbol_list)
   NASDAQ_symbol_df <- as.data.frame(NASDAQ_Symbol_list)
   DOW_symbol_df <- as.data.frame(DOW_Symbol_list)
-  
-  # Add a column to mark only stocks with financial statements
-  Financial_Statement_symbol_df <- Financial_Statement_symbol_df %>% 
-    mutate(Financial_statements = 'TRUE') %>% 
-    rename(symbol = Financial_Statement_Symbol_List)
   
   # Add a column to mark only the S&P500, NASDAQ and Dow Jones stocks
   SP500_symbol_df <- SP500_symbol_df %>% 
@@ -61,12 +50,57 @@ get_stock_data_df <- function(API_Key){
     select(-c("name","dateFirstAdded", "sector","subSector","headQuarter","cik", "founded"))
   
   # Merge stock data with financial statement symbol list and key indexes
-  symbol_df  <- semi_join(symbol_df , Financial_Statement_symbol_df, by = "symbol")
   symbol_df  <- left_join(symbol_df , SP500_symbol_df, by = "symbol")
   symbol_df  <- left_join(symbol_df , NASDAQ_symbol_df, by = "symbol" )
   symbol_df  <- left_join(symbol_df , DOW_symbol_df, by = "symbol")
+  symbol_df <- symbol_df %>% 
+    select(-c("sector","subSector","headQuarter","cik","founded"))
   
-  return(symbol_df)
+  # Base URL for API calls
+  API_Profile_path_base <- 'https://financialmodelingprep.com/stable/profile?symbol='
+  
+  # Initialize a list to store profile data
+  Profile_list <- list()
+  
+  total_stocks <- length(symbol_df$symbol)
+  i <- 1
+  
+  
+  # Define a function to process each ticker
+  process_ticker <- function(symbol) {
+    cat("Processing Profile", symbol_df$symbol, "-", round(i / total_stocks * 100, 1), "% complete\n")
+    
+    # Construct API URL for the current ticker
+    API_Profile_path <- paste0(API_Profile_path_base, symbol_df$symbol, '?apikey=', API_Key)
+    
+    result <- list(
+      Profile = NULL
+    )
+    
+    tryCatch({
+      # Retrieve Profile
+      Stock_Profile_temp <- fromJSON(API_Profile_path)
+      if (length(Stock_Profile_temp) > 0) {
+        result$Profile <- data.frame(Stock_Profile_temp)
+      }
+    }, error = function(cond) {
+      message(paste("API provided an error for this Ticker:", ticker))
+      message("Here's the original error message:")
+      message(cond)
+    }, warning = function(cond) {
+      message(paste("API provided a warning for this Ticker:", ticker))
+      message("Here's the original warning message:")
+      message(cond)
+    })
+    
+    i <<- i + 1  # Update i in the global environment
+    
+  }
+  return(
+    list(
+        symbol_df=symbol_df,
+        result)
+  )
 }
 
 get_fundamentals_data_df <- function(symbols_df, API_Key, period, limit){

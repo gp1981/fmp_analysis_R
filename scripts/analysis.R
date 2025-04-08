@@ -132,7 +132,7 @@ calculate_MF_ranking <- function(df){
   ## 06 - Prepare output
   df <- df %>% 
     select(date, symbol, companyName, Risk.Code,
-           country, price, Market_Cap_Millions,Rank_EY_ROCE,
+           country, price, any_of(c("Market_Cap_Millions")),Rank_EY_ROCE,
            Earning.Power.per.Share.TTM,
            Owner.Earnings.Buffet.per.Share.TTM,
            Owner.Earnings.Buffet.IGVI.per.Share.TTM,
@@ -185,8 +185,8 @@ EY_ROCE_ranking <- function(df){
   df <- df %>% 
     arrange(Rank_EY_ROCE_absolute) %>% 
     mutate(Rank_EY_ROCE = dplyr::row_number()) %>%
-    select(date,symbol, companyName,threshold_mktCap,TopGreenblatt,industry, 
-           Market_Cap_Millions,Rank_EY_ROCE, Earnings_Yield, Return_On_Capital_Employed,
+    select(date,symbol, companyName,any_of(c("threshold_mktCap","TopGreenblatt")),industry, 
+           any_of(c("Market_Cap_Millions")),Rank_EY_ROCE, Earnings_Yield, Return_On_Capital_Employed,
            priceEarningsRatioTTM, priceBookValueRatioTTM,
            totalDebtToCapitalizationTTM, debtRatioTTM, debtEquityRatioTTM,
            Equity_Net_premiumToFCF, Equity_Net_Premium,  
@@ -851,6 +851,7 @@ capex_equity_growth_plot <- function(fundamentals_df) {
     ungroup()
   
   print(correlation_results)
+  export_excel_data(fundamentals_df)
   
   
   # Step 6: Prepare data for plotting
@@ -902,6 +903,28 @@ capex_equity_growth_plot <- function(fundamentals_df) {
   # Return the plot
   return(p)
 }
+
+
+# Seasonality -------------------------------------------------------------
+
+seasonsality <- function(fundamentals_df){
+  fundamentals_df %>%
+    mutate(
+      quarter = quarter(date, with_year = FALSE)
+    ) %>%
+    pivot_longer(cols = c(grossProfitMargin, operatingProfitMargin, netProfitMargin),
+                 names_to = "margin_type",
+                 values_to = "value") %>%
+    ggplot(aes(x = factor(quarter), y = value, fill = factor(quarter))) +
+    geom_boxplot() +
+    facet_grid(margin_type ~ symbol, scales = "free_y") +
+    labs(title = "Distribution of Margins by Quarter",
+         x = "Quarter",
+         y = "Margin",
+         fill = "Quarter") +
+    theme_minimal()
+}
+
 
 
 
