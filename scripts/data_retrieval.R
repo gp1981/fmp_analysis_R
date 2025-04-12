@@ -97,9 +97,7 @@ get_stock_data_df <- function(API_Key){
     
   }
   return(
-    list(
-        symbol_df=symbol_df,
-        result)
+    list(result)
   )
 }
 
