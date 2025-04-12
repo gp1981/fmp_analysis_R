@@ -719,7 +719,7 @@ multipliers <- function(df){
       Enterprise.Value.Op.Assets = mktCap + totalLiabilities - goodwillAndIntangibleAssets -
         excess_cash - 0.5* (otherCurrentAssets + otherNonCurrentAssets),
       
-      ratio_enterpriseValue = Enterprise.Value.Op.Assets / enterpriseValue,
+      EVops_EV = Enterprise.Value.Op.Assets / enterpriseValue,
       
       MktCap_EV = mktCap / Enterprise.Value.Op.Assets,
       
@@ -760,7 +760,7 @@ multipliers <- function(df){
       Owner.Earnings.IGVI.per.Share.TTM,
       CAGR.full.Equity,
       no.quarters.FCF_negative_ratio,
-      ratio_enterpriseValue,
+      EVops_EV,
       MktCap_EV,
       Debt_EV,
       totalAssets_EV,

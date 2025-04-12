@@ -56,8 +56,8 @@ fundamentals_df <- ttm_fundamentals(fundamentals_df,
                                                      "capitalExpenditure"))
 
 
-# fundamentals_df_TTM <- fundamentals_df %>%
-#   select(date,symbol, ends_with("_TTM")) 
+fundamentals_df_TTM <- fundamentals_df %>%
+  select(date,symbol, ends_with("_TTM"))
 # # %>%
 # #   filter(month(date) == 9)  # to change based on TTM
 # 
