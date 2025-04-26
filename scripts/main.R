@@ -21,7 +21,7 @@ hist_NASDAQ_df <- get_hist_index_df(index = "NASDAQ", API_Key)
 hist_DOW_df <- get_hist_index_df(index = "DOW", API_Key)
 
 # 04 - Select manually stocks -------------------------------------------
-symbols_df <- symbols_df %>% filter(symbol %in% c("CRUS"))
+symbols_df <- symbols_df %>% filter(symbol %in% c("RIO"))
 
 ## 04.1 - Select companies from www.magicformulainvesting.com (MF) ----------------
 symbols_df <- MF_df %>% 
@@ -95,6 +95,7 @@ fundamentals_df <- negative_FCF(fundamentals_df)
 fundamentals_df <- multipliers(fundamentals_df)
 
 export_excel_data(fundamentals_df)
+export_excel_data(fundamentals_df_TTM)
 
 # 08 - Combine fundamentals and quotes ------------------------------------
 data_df <- left_join(fundamentals_df, quote_data_df)
