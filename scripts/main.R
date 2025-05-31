@@ -21,7 +21,18 @@ hist_NASDAQ_df <- get_hist_index_df(index = "NASDAQ", API_Key)
 hist_DOW_df <- get_hist_index_df(index = "DOW", API_Key)
 
 # 04 - Select manually stocks -------------------------------------------
-symbols_df <- symbols_df %>% filter(symbol %in% c("RIO"))
+symbols_df <- symbols_df %>% filter(symbol %in% c("MLI"))
+
+# 04.1 - OPTION Read the tickers from Excel (sheet "Full_Equity", column H4:H28)
+library(readxl)
+tickers <- read_excel("your_file.xlsx", sheet = "Full_Equity", range = "H4:H28", col_names = FALSE)
+
+# 04.2. Convert to vector (and drop any NA values)
+ticker_vector <- tickers[[1]] %>% na.omit() %>% unique()
+
+# 04.3. Filter your data frame
+symbols_df <- symbols_df %>% filter(symbol %in% ticker_vector)
+
 
 ## 04.1 - Select companies from www.magicformulainvesting.com (MF) ----------------
 symbols_df <- MF_df %>% 
