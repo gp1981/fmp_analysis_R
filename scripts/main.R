@@ -9,21 +9,17 @@ source('scripts/utils.R')
 source('scripts/data_retrieval.R')
 source('scripts/analysis.R')
 
-# 02 - Get stock data S&P500, NASDAQ, DOW ------------------------------------------
-symbols_df <- get_stock_data_df(API_Key = API_Key)
+# 02 - Get stock data  ------------------------------------------
+Stock_List_data <- get_stock_data_df(API_Key = API_Key)
 
 ## 02.1 - Get stock data of Magic Formula ----------------------------------
 MF_df <- get_MF_data_df(mktCap_limit_lower = 1000, mktCap_limit_upper = 20000, mktCap_step_M = 100)
 
-# 03 - Get historical data of S&P500, NASDAQ, DOW (WIP) ------------------------------------------
-hist_SP500_df <- get_hist_index_df(index = "SP500", API_Key)
-hist_NASDAQ_df <- get_hist_index_df(index = "NASDAQ", API_Key)
-hist_DOW_df <- get_hist_index_df(index = "DOW", API_Key)
-
 # 04 - Select manually stocks -------------------------------------------
-symbols_df <- symbols_df %>% filter(symbol %in% c("MLI"))
+Stock_List_data <- Stock_List_data %>% filter(Ticker %in% c("WLLAW"))
+Stock_List_data <- API_Profile(Stock_List_data, API_Key)
 
-# 04.1 - OPTION Read the tickers from Excel (sheet "Full_Equity", column H4:H28)
+# 04.1 - OPTION Read the tickers from Excel (sheet "Full_Equity", column H4:H28) ----
 library(readxl)
 tickers <- read_excel("your_file.xlsx", sheet = "Full_Equity", range = "H4:H28", col_names = FALSE)
 
@@ -34,18 +30,16 @@ ticker_vector <- tickers[[1]] %>% na.omit() %>% unique()
 symbols_df <- symbols_df %>% filter(symbol %in% ticker_vector)
 
 
-## 04.1 - Select companies from www.magicformulainvesting.com (MF) ----------------
-symbols_df <- MF_df %>% 
-  left_join(symbols_df, by = "symbol") %>% 
-  select(-name.x) %>% 
-  rename(name = name.y) %>% 
-  select(name, everything())
+
+## 05 - Select companies from www.magicformulainvesting.com (MF) ----------------
+Stock_List_data <- MF_df %>% 
+  left_join(Stock_List_data, by = "Ticker")
 
 # 06 - Get fundamentals of selected stocks -------------------------
-limit = 60
+period_limit = 60
 period = "quarter"
-fundamentals_df_original <- get_fundamentals_data_df(symbols_df, period, 
-                                            limit, API_Key = API_Key)
+fundamentals_df_original <- get_fundamentals_data_df(Stock_List_data, period, period_limit, 
+                                                     API_Key = API_Key)
 
 fundamentals_df <- reduce_financialsMetricsProfile(fundamentals_df_original)
 
@@ -60,15 +54,16 @@ fundamentals_df <- ttm_fundamentals(fundamentals_df,
                                                      "incomeTaxExpense",
                                                      "netIncome",
                                                      "operatingCashFlow",
-                                                     "dividendsPaid",
-                                                     "commonStockIssued",
+                                                     "commonDividendsPaid",
+                                                     "preferredDividendsPaid",
+                                                     "commonStockIssuance",
                                                      "commonStockRepurchased",
                                                      "depreciationAndAmortization",
                                                      "capitalExpenditure"))
 
 
 fundamentals_df_TTM <- fundamentals_df %>%
-  select(date,symbol, ends_with("_TTM"))
+  select(date,Ticker, ends_with("_TTM"))
 # # %>%
 # #   filter(month(date) == 9)  # to change based on TTM
 # 
@@ -76,27 +71,10 @@ fundamentals_df_TTM <- fundamentals_df %>%
 #                  Ticker= "NOMD")
 
 # 06 - Get price and quote data of selected stocks -------------------------
-quote_data_df <- get_quote_data_df(symbols_df, API_Key = API_Key)
+quote_data_df <- get_quote_data_df(Stock_List_data, API_Key = API_Key)
 # price_history_data_df <- get_price_history_data_df(symbols_df, startDate = historical_dates$date_20Y, endDate = today(), API_Key = API_Key)
 
-
-# 0X - Get filing as reported from fmp (WIP) ------------------
-# financial_statements_as_reported_list <- get_financial_statements_as_reported_list(symbols_df, period = "quarter", limit = 12, API_Key = API_Key)
-# 
-# # Identify specific variables of filings as reported ---
-# variables_of_interest_df <- search_and_retrieve_columns(financial_statements_as_reported_list, words = c("treasury", "dividend"))
-# 
-# 
-# # Extract specific variables from financial_statements_as_reported (EXAMPLE)
-# equity_variables_to_extract <- c("date", "symbol", "treasurystockvalue", "treasurystockcommonshares",
-#                           "paymentsforrepurchaseofcommonstock", "proceedsfromissuanceorsaleofequity",
-#                           "dividends", "paymentsofdividendscommonstock")
-# 
-# # Extract the specific variables and combine into a single data frame
-# combined_equity_variable_df <- extract_specific_variables(financial_statements_as_reported_list, equity_variables_to_extract)
-# 
-# 
-# 
+ 
 # 07 - Maintenance CAPEX, Owner Earnings, Full Equity Growth-----------------------------------------------------
 fundamentals_df <- excess_cash(fundamentals_df)
 fundamentals_df <- maintenance_CAPEX(fundamentals_df)
@@ -119,7 +97,7 @@ export_excel_data(df_MF_rank, "MF_Rank")
 # Select companies for ratio analysis (max 5 companies e.g. peers)
 df_ratio <- fundamentals_df
 
-ratio_analysis_plot <- ratio_analysis_chart(df_ratio)
+ratio_analysis_plot <- ratio_analysis_chart(df_ratio) #-> CHECK RATIO
 
 # Charts
 ratio_analysis_plot$current_assets_plot
