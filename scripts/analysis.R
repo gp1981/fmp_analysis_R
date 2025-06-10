@@ -75,9 +75,9 @@ calculate_MF_ranking <- function(df){
                           width = 4, FUN = sum, align = "left", fill = NA),
       Op_CashFlow.4FQ = rollapply(netCashProvidedByOperatingActivities,
                                   width = 4, FUN = sum, align = "left", fill = NA),
-      Fin.CashFlow.4FQ = rollapply(netCashUsedForInvestingActivites,
+      Fin.CashFlow.4FQ = rollapply(netCashProvidedByOperatingActivities,
                                    width = 4, FUN = sum, align = "left", fill = NA),
-      Inv_CashFlow.4Q = rollapply(netCashUsedProvidedByFinancingActivities,
+      Inv_CashFlow.4Q = rollapply(netCashProvidedByFinancingActivities,
                                   width = 4, FUN = sum, align = "left", fill = NA),
       Capex.4FQ = rollapply(capitalExpenditure,
                             width = 4, FUN = sum, align = "left", fill = NA),
@@ -118,13 +118,13 @@ calculate_MF_ranking <- function(df){
     mutate(Risk.Code = case_when(
       quickRatioTTM >= 2 & 
         cashRatioTTM >= 1 & 
-        debtToEquityTTM <= 0.33 & 
-        debtToAssetsTTM <= 0.2 ~ "GREEN",
+        debtToEquityRatioTTM <= 0.33 & 
+        debtToCapitalRatioTTM <= 0.2 ~ "GREEN",
       
       quickRatioTTM >= 1 & 
         cashRatioTTM >= 0.3 & 
-        debtToEquityTTM <= 1 &
-        debtToAssetsTTM <= 0.35 ~ "YELLOW",
+        debtToEquityRatioTTM <= 1 &
+        debtToCapitalRatioTTM <= 0.35 ~ "YELLOW",
       
       TRUE ~ "RED"
     ))
@@ -137,11 +137,6 @@ calculate_MF_ranking <- function(df){
            Owner.Earnings.Buffet.per.Share.TTM,
            Owner.Earnings.Buffet.IGVI.per.Share.TTM,
            Owner.Earnings.IGVI.per.Share.TTM,
-           Earnings_Yield, Return_On_Capital_Employed, priceEarningsRatioTTM, 
-           priceBookValueRatioTTM, pbRatioTTM,Equity_Net_premiumToFCF,MktCap_EV,
-           totalDebtToCapitalizationTTM, debtRatioTTM, debtEquityRatioTTM, Debt_EV, 
-           currentRatioTTM, quickRatioTTM, cashRatioTTM, returnOnEquityTTM, returnOnAssetsTTM, returnOnCapitalEmployedTTM, 
-           CAGR.full.Equity,no.quarters.FCF_negative_ratio,
            everything()) %>% 
     arrange(Rank_EY_ROCE)
   
@@ -174,8 +169,8 @@ EY_ROCE_ranking <- function(df){
     mutate(Rank_Earnings_Yield = dplyr::row_number()) %>% 
     select(date,Ticker, companyName, marketCap, Enterprise_Value, Rank_Earnings_Yield, 
            Earnings_Yield, Rank_Return_On_Capital_Employed, Return_On_Capital_Employed, 
-           EBIT.4FQ, Tangible_Capital_Employed, Net_Working_Capital, excess_cash, 
-           everything())%>% 
+           EBIT.4FQ, Net_Working_Capital, excess_cash, 
+           everything()) %>% 
     ungroup()
   
   df <- df %>% 
@@ -187,8 +182,8 @@ EY_ROCE_ranking <- function(df){
     mutate(Rank_EY_ROCE = dplyr::row_number()) %>%
     select(date,Ticker, companyName,threshold_mktCap,TopGreenblatt,industry, 
            Market_Cap_Millions,Rank_EY_ROCE, Earnings_Yield, Return_On_Capital_Employed,
-           priceEarningsRatioTTM, priceBookValueRatioTTM,
-           totalDebtToCapitalizationTTM, debtRatioTTM, debtEquityRatioTTM,
+           priceToEarningsRatioTTM, priceToBookRatioTTM,
+           debtToCapitalRatioTTM, debtToEquityRatioTTM,
            Equity_Net_premiumToFCF, Equity_Net_Premium,  
            EBIT.4FQ, Tangible_Capital_Employed,
            Net_Working_Capital, excess_cash, everything()
@@ -217,7 +212,7 @@ ratio_analysis_chart <- function(financial_data_df){
   }
   
   # List of ratio columns to process
-  financial_data_df_columns <- c("currentRatio", "quickRatio", "cashRatio", 
+  financial_data_df_columns <- c("currentRatio", "quickRatio","cashRatio",
                                  "daysOfSalesOutstanding", "daysOfInventoryOutstanding", 
                                  "daysOfPayablesOutstanding", "operatingCycle", 
                                  "cashConversionCycle", "debtEquityRatio", 
@@ -226,10 +221,11 @@ ratio_analysis_chart <- function(financial_data_df){
   
   # Reshape the data to long format
   current_assets_ratio_data_long <- financial_data_df %>%
-    select(Ticker, date, currentRatio,  cashRatio) %>%
-    pivot_longer(cols = c(currentRatio,  cashRatio),
+    select(Ticker, date, currentRatio, cashRatio) %>%
+    pivot_longer(cols = c(currentRatio, cashRatio),
                  names_to = "ratio_type", 
-                 values_to = "value")
+                 values_to = "value") %>% 
+    filter(!is.na(value))
   
   cash_conversion_ratio_data_long <- financial_data_df %>%
     select(Ticker, date, daysOfSalesOutstanding, daysOfInventoryOutstanding, 
@@ -237,19 +233,22 @@ ratio_analysis_chart <- function(financial_data_df){
     pivot_longer(cols = c(daysOfSalesOutstanding, daysOfInventoryOutstanding, 
                           daysOfPayablesOutstanding, operatingCycle, cashConversionCycle),
                  names_to = "ratio_type", 
-                 values_to = "value")
+                 values_to = "value") %>% 
+    filter(!is.na(value))
   
   debt_ratio_data_long <- financial_data_df %>%
-    select(Ticker, date, debtEquityRatio, totalDebtToCapitalization, longTermDebtToCapitalization) %>%
-    pivot_longer(cols = c(debtEquityRatio, totalDebtToCapitalization, longTermDebtToCapitalization),
+    select(Ticker, date, debtToEquityRatio, debtToCapitalRatio, longTermDebtToCapitalRatio) %>%
+    pivot_longer(cols = c(debtToEquityRatio, debtToCapitalRatio, longTermDebtToCapitalRatio),
                  names_to = "ratio_type", 
-                 values_to = "value")
+                 values_to = "value") %>% 
+    filter(!is.na(value))
   
   debt_coverage_data_long <- financial_data_df %>%
-    select(Ticker, date, shortTermCoverageRatios, cashFlowToDebtRatio) %>%
-    pivot_longer(cols = c(shortTermCoverageRatios, cashFlowToDebtRatio),
+    select(Ticker, date, debtServiceCoverageRatio, shortTermOperatingCashFlowCoverageRatio) %>%
+    pivot_longer(cols = c(debtServiceCoverageRatio, shortTermOperatingCashFlowCoverageRatio),
                  names_to = "ratio_type", 
-                 values_to = "value")
+                 values_to = "value") %>% 
+    filter(!is.na(value))
   
   
   # Calculate IQR limits for each combination of Ticker and ratio_type
@@ -297,12 +296,12 @@ ratio_analysis_chart <- function(financial_data_df){
          title = "Trends of Financial Ratios Over Time",
          subtitle = "Current, Quick, and Cash Ratios by Ticker",
          color = "Ratio Type") +
-    scale_color_manual(values = c("currentRatio" = "#0072B2", 
-                                  "quickRatio" = "#009E73", 
-                                  "cashRatio" = "#D55E00"),
-                       labels = c("currentRatio" = "Current Ratio", 
-                                  "quickRatio" = "Quick Ratio", 
-                                  "cashRatio" = "Cash Ratio")) +
+    scale_color_manual(values = c("currentRatio" = "#0072B2",
+                                  "cashRatio" = "#D55E00",
+                                  "quickRatio" = "#009E73"),
+                       labels = c("currentRatio" = "Current Ratio",
+                                  "cashRatio" = "Cash Ratio",
+                                  "quickRatio" = "Quick Ratio")) +
     scale_y_continuous(limits = c(min(current_assets_iqr_limits$ymin, na.rm = TRUE) * 0.8, 
                                   max(current_assets_iqr_limits$ymax, na.rm = TRUE) * 0.8)) +
     theme_minimal() +
@@ -806,7 +805,7 @@ capex_equity_growth_plot <- function(fundamentals_df) {
   fundamentals_df <- fundamentals_df %>%
     group_by(Ticker) %>% 
     arrange(date) %>%
-    mutate(capex = capexToRevenue * revenue,
+    mutate(capex = capitalExpenditure,
            capex_TTM = rollapply(capex, width = 4, FUN = sum, fill = NA, align = "right")) %>% 
     ungroup()
   
@@ -816,7 +815,7 @@ capex_equity_growth_plot <- function(fundamentals_df) {
     group_by(Ticker) %>% 
     arrange(desc(date)) %>% 
     mutate(
-      equity_increase_annual = full_equity - lead(full_equity, 4),
+      equity_increase_annual = full_equity_netIncome - lead(full_equity_netIncome, 4),
       
       capex_TTM_2y = lead(capex_TTM,8),
       capex_TTM_3y = lead(capex_TTM,12),

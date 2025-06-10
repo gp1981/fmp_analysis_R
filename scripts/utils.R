@@ -259,6 +259,9 @@ reduce_financialsMetricsProfile <- function(FinancialsMetricsProfile) {
   DF <- DF %>% 
     left_join(DF_Shares_Float, by = c("Ticker"))
   
+  DF <- DF %>%
+    left_join(DF_Ratios, by = c(intersect(names(DF),names(DF_Ratios))))
+  
   # Replace the first row value
   DF <- DF %>%
     group_by(Ticker) %>% 

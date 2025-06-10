@@ -640,14 +640,14 @@ extract_company_data <- function(session, MinimumMarketCap, TopGreenblatt) {
     })
 }
 
-get_quote_data_df <- function(symbols_df, API_Key){
+get_quote_data_df <- function(Stock_List_data, API_Key){
   
   # Create API URLs for various calls to collect full quote
-  API_quote_path_base <- 'https://financialmodelingprep.com/api/v3/quote/'
-  API_quote_path <- paste0(API_quote_path_base, symbols_df$symbol, '?apikey=', API_Key)
+  API_quote_path_base <- 'https://financialmodelingprep.com/stable/aftermarket-trade?symbol='
+  API_quote_path <- paste0(API_quote_path_base, Stock_List_data$Ticker, '&apikey=', API_Key)
   
   # Progress bar
-  total_symbols <- nrow(symbols_df) # Adjust the total to the number of different data
+  total_symbols <- nrow(Stock_List_data) # Adjust the total to the number of different data
   pb <- progress_bar$new(
     format = "  [:bar] :percent in :elapsed",
     total = total_symbols, 
@@ -680,6 +680,10 @@ get_quote_data_df <- function(symbols_df, API_Key){
   }
   
   quote_df <- fetch_quote_data(API_quote_path) %>% as.data.frame()
-  
+  quote_df <- quote_df %>%
+    mutate(
+      timestamp = as.Date(format(as.POSIXct(timestamp / 1000, origin = "1970-01-01", 
+                                            tz = "UTC"), "%Y-%m-%d"))
+    )
 }
 

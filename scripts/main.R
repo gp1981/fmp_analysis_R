@@ -15,11 +15,6 @@ Stock_List_data <- get_stock_data_df(API_Key = API_Key)
 ## 02.1 - Get stock data of Magic Formula ----------------------------------
 MF_df <- get_MF_data_df(mktCap_limit_lower = 1000, mktCap_limit_upper = 20000, mktCap_step_M = 100)
 
-# 03 - Get historical data of S&P500, NASDAQ, DOW (WIP) ------------------------------------------
-# hist_SP500_df <- get_hist_index_df(index = "SP500", API_Key)
-# hist_NASDAQ_df <- get_hist_index_df(index = "NASDAQ", API_Key)
-# hist_DOW_df <- get_hist_index_df(index = "DOW", API_Key)
-
 # 04 - Select manually stocks -------------------------------------------
 Stock_List_data <- Stock_List_data %>% filter(Ticker %in% c("WLLAW"))
 Stock_List_data <- API_Profile(Stock_List_data, API_Key)
@@ -76,27 +71,10 @@ fundamentals_df_TTM <- fundamentals_df %>%
 #                  Ticker= "NOMD")
 
 # 06 - Get price and quote data of selected stocks -------------------------
-quote_data_df <- get_quote_data_df(Stock_List_data, API_Key = API_Key) # <---  TO BE FIXED
+quote_data_df <- get_quote_data_df(Stock_List_data, API_Key = API_Key)
 # price_history_data_df <- get_price_history_data_df(symbols_df, startDate = historical_dates$date_20Y, endDate = today(), API_Key = API_Key)
 
-
-# 0X - Get filing as reported from fmp (WIP) ------------------
-# financial_statements_as_reported_list <- get_financial_statements_as_reported_list(symbols_df, period = "quarter", limit = 12, API_Key = API_Key)
-# 
-# # Identify specific variables of filings as reported ---
-# variables_of_interest_df <- search_and_retrieve_columns(financial_statements_as_reported_list, words = c("treasury", "dividend"))
-# 
-# 
-# # Extract specific variables from financial_statements_as_reported (EXAMPLE)
-# equity_variables_to_extract <- c("date", "symbol", "treasurystockvalue", "treasurystockcommonshares",
-#                           "paymentsforrepurchaseofcommonstock", "proceedsfromissuanceorsaleofequity",
-#                           "dividends", "paymentsofdividendscommonstock")
-# 
-# # Extract the specific variables and combine into a single data frame
-# combined_equity_variable_df <- extract_specific_variables(financial_statements_as_reported_list, equity_variables_to_extract)
-# 
-# 
-# 
+ 
 # 07 - Maintenance CAPEX, Owner Earnings, Full Equity Growth-----------------------------------------------------
 fundamentals_df <- excess_cash(fundamentals_df)
 fundamentals_df <- maintenance_CAPEX(fundamentals_df)
@@ -111,7 +89,7 @@ export_excel_data(fundamentals_df_TTM)
 # 08 - Combine fundamentals and quotes ------------------------------------
 data_df <- left_join(fundamentals_df, quote_data_df)
 
-# 09 - Magic Formula Ranking ---------------------------------------------TO TEST
+# 09 - Magic Formula Ranking ---------------------------------------------
 df_MF_rank <- calculate_MF_ranking(data_df)
 export_excel_data(df_MF_rank, "MF_Rank")
 # 09 - Ratio analysis --------------------------------------------------------
