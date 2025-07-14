@@ -195,44 +195,22 @@ reduce_financialsMetricsProfile <- function(FinancialsMetricsProfile) {
     )
   }
   
-  if ("marketCap" %in% names(DF_KM_TTM)) {
-    DF_KM_TTM <- DF_KM_TTM %>% rename(
-      marketCap_TTM = marketCap
-    )
-  }
-  
-  if ("marketCap" %in% names(DF_EV)) {
-    DF_EV <- DF_EV %>% rename(
-      marketCap_EV = marketCap,
-      enterpriseValue_EV = enterpriseValue
-    )
-  }
-  
   if ("date" %in% names(DF_Shares_Float)) {
     DF_Shares_Float <- DF_Shares_Float %>% rename(
       share_float_date = date
     )
   }
   
-  if ("marketCap" %in% names(DF_Profile)) {
-    DF_Profile <- DF_Profile %>% rename(
-      marketCap_Profile = marketCap
-    )
+  if ("marketCap" %in% names(DF_Profile) && all(DF_Profile$currency == "USD")) {
+    DF_Profile <- DF_Profile %>%
+      rename(marketCap_USD_Profile = marketCap)
+  } else if ("marketCap" %in% names(DF_Profile)) {
+    DF_Profile <- DF_Profile %>%
+      rename(marketCap_LocalFX_Profile = marketCap)
   }
   
-  if ("marketCap" %in% names(DF_KM)) {
-    DF_KM <- DF_KM %>% rename(
-      marketCap_KM = marketCap
-    )
-  }
   
-  if ("date" %in% names(DF_Shares_Float)) {
-    DF_Shares_Float <- DF_Shares_Float %>% rename(
-      share_float_date = date
-    )
-  }
-  
- # --- Merge TTM values ---
+  # --- Merge TTM values ---
   DF_TTM <- DF_Profile %>%
     left_join(DF_Ratios_TTM, by = intersect(names(DF_Ratios_TTM),names(DF_Profile)))
   
@@ -262,16 +240,6 @@ reduce_financialsMetricsProfile <- function(FinancialsMetricsProfile) {
   DF <- DF %>%
     left_join(DF_Ratios, by = c(intersect(names(DF),names(DF_Ratios))))
   
-  # Replace the first row value
-  DF <- DF %>%
-    group_by(Ticker) %>% 
-    arrange(desc(date)) %>% 
-    mutate(
-      marketCap = ifelse(row_number() == 1, marketCap_Profile, marketCap_TTM),
-      enterpriseValue = ifelse(row_number() == 1, enterpriseValue_EV, enterpriseValueTTM)
-    )
-  
-  
   # --- Clean up suffixes from joins ---
   clean_join_suffixes <- function(df) {
     df <- df %>% select(-matches("\\.y$"))
@@ -290,6 +258,15 @@ reduce_financialsMetricsProfile <- function(FinancialsMetricsProfile) {
     mutate(across(where(is.integer), as.numeric)) %>%
     mutate(outstandingShares = as.numeric(outstandingShares)) %>%
     mutate(outstandingShares = if_else(is.na(outstandingShares), weightedAverageShsOutDil, outstandingShares))
+  
+  # --- Add FX rates ---
+  # 1) build the cross‑currency key, e.g. "EURUSD"
+  DF <- DF %>% mutate(FX_rate_symbol = paste0(reportedCurrency, currency))
+  
+  # 2) bring in the matching FX rate and give the rate column a clearer name
+  DF <- DF %>% left_join(FX_rates_USD_df, by = c("FX_rate_symbol" = "fx_symbol")) %>% 
+    rename(FX_rates = value)
+  
   return(DF)
 }
 

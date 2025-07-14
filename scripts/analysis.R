@@ -611,6 +611,13 @@ ownerEarnings <- function(df){
     group_by(Ticker) %>% 
     arrange(desc(date)) %>% 
     mutate(
+      marketCap_LocalFX = ifelse(row_number() == 1, marketCap_USD_Profile/FX_rates, marketCapitalization_EV_LocalFX_EV)
+    )
+  
+  df <- df %>% 
+    group_by(Ticker) %>% 
+    arrange(desc(date)) %>% 
+    mutate(
       Earning.Power.per.Share.TTM = Earning.Power.TTM / outstandingShares,
       
       Owner.Earnings.Buffet.TTM = rollapply(Owner.Earnings.Buffet,
@@ -628,7 +635,7 @@ ownerEarnings <- function(df){
       
       Owner.Earnings.IGVI.per.Share.TTM = Owner.Earnings.IGVI.TTM / outstandingShares,
       
-      mktCap.per.Share = marketCap / outstandingShares
+      mktCap.per.Share = marketCap_LocalFX / outstandingShares
       
     ) %>% 
     ungroup()
@@ -742,12 +749,12 @@ multipliers <- function(df){
   
   df <- df %>%
     mutate(
-      Enterprise.Value.Op.Assets = marketCap + totalLiabilities - goodwillAndIntangibleAssets -
+      Enterprise.Value.Op.Assets = marketCap_LocalFX + totalLiabilities - goodwillAndIntangibleAssets -
         excess_cash - 0.5* (otherCurrentAssets + otherNonCurrentAssets),
       
-      EVops_EV = Enterprise.Value.Op.Assets / enterpriseValue,
+      EVops_EV = Enterprise.Value.Op.Assets / enterpriseValueTTM_LocalFX_KM_TTM,
       
-      MktCap_EV = marketCap / Enterprise.Value.Op.Assets,
+      MktCap_EV = marketCap_LocalFX / Enterprise.Value.Op.Assets,
       
       Debt_EV = totalDebt / Enterprise.Value.Op.Assets,
       
@@ -765,7 +772,7 @@ multipliers <- function(df){
       Tangible_Equity_book = totalAssets - totalLiabilities - 
         goodwillAndIntangibleAssets,
       
-      Equity_Net_Premium = marketCap - Tangible_Equity_book,
+      Equity_Net_Premium = marketCap_LocalFX - Tangible_Equity_book,
       
       Equity_Net_premiumToFCF= Equity_Net_Premium / FCF.4FQ,
       

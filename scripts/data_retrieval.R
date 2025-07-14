@@ -169,7 +169,6 @@ get_fundamentals_data_df <- function(Stock_List_data, API_Key, period, period_li
       Stock_KeyMetrics_temp_TTM <- fromJSON(API_KeyMetrics_TTM_path)
       if (length(Stock_KeyMetrics_temp_TTM) > 0) {
         result$KM_TTM <- data.frame(Stock_KeyMetrics_temp_TTM)
-        result$KM_TTM$Ticker <- ticker  # Add ticker column
       }
       
       # Retrieve Key Metrics
@@ -182,7 +181,6 @@ get_fundamentals_data_df <- function(Stock_List_data, API_Key, period, period_li
       Stock_Ratios_temp_TTM <- fromJSON(API_Ratios_TTM_path)
       if (length(Stock_Ratios_temp_TTM) > 0) {
         result$Ratios_TTM <- data.frame(Stock_Ratios_temp_TTM)
-        result$Ratios_TTM$Ticker <- ticker  # Add ticker column
       }
       
       # Retrieve Ratios
@@ -225,58 +223,59 @@ get_fundamentals_data_df <- function(Stock_List_data, API_Key, period, period_li
   IS <- bind_rows(lapply(results, function(x) x$IS))
   BS <- bind_rows(lapply(results, function(x) x$BS))
   CF <- bind_rows(lapply(results, function(x) x$CF))
+  
   KeyMetrics_TTM <- bind_rows(lapply(results, function(x) x$KM_TTM))
-  KeyMetrics <- bind_rows(lapply(results, function(x) x$KM))
+  KeyMetrics_TTM <- KeyMetrics_TTM %>% rename(marketCap_LocalFX_KM_TTM = marketCap)
+  KeyMetrics_TTM <- KeyMetrics_TTM %>% rename(enterpriseValueTTM_LocalFX_KM_TTM = enterpriseValueTTM)
+  
+  KeyMetrics <- bind_rows(lapply(results, function(x) x$KM)) 
+  KeyMetrics <- KeyMetrics %>% rename(marketCap_LocalFX_KM = marketCap)
+  KeyMetrics <- KeyMetrics %>% rename(enterpriseValueTTM_LocalFX_KM = enterpriseValue)
+  
   Ratios_TTM  <- bind_rows(lapply(results, function(x) x$Ratios_TTM))
   Ratios  <- bind_rows(lapply(results, function(x) x$Ratios))
   Shares_Float  <- bind_rows(lapply(results, function(x) x$Shares_Float))
+  
   EV  <- bind_rows(lapply(results, function(x) x$EV))
+  EV <- EV %>% rename(marketCapitalization_EV_LocalFX_EV = marketCapitalization)
+  EV <- EV %>% rename(enterpriseValue_EV_LocalFX_EV = enterpriseValue)
   
   # Rename column "symbol" to "Ticker" for consistency
   if ("symbol" %in% colnames(IS)) {
     IS <- IS %>% rename(Ticker = symbol)
   }
+  
   if ("symbol" %in% colnames(BS)) {
     BS <- BS %>% rename(Ticker = symbol)
   }
+  
   if ("symbol" %in% colnames(CF)) {
     CF <- CF %>% rename(Ticker = symbol)
   }
-  if (all(c("symbol", "Ticker") %in% colnames(KeyMetrics_TTM))) {
-    KeyMetrics_TTM <- KeyMetrics_TTM %>% select(-symbol)
-  } else if ("symbol" %in% colnames(KeyMetrics_TTM)) {
+  
+  if ("symbol" %in% colnames(KeyMetrics_TTM)) {
     KeyMetrics_TTM <- KeyMetrics_TTM %>% rename(Ticker = symbol)
-  }
-  if (all(c("symbol", "Ticker") %in% colnames(KeyMetrics))) {
-    KeyMetrics <- KeyMetrics %>% select(-symbol)
-  } else if ("symbol" %in% colnames(KeyMetrics)) {
+  } 
+  
+  if ("symbol" %in% colnames(KeyMetrics)) {
     KeyMetrics <- KeyMetrics %>% rename(Ticker = symbol)
   }
-  if (all(c("symbol", "Ticker") %in% colnames(Ratios_TTM))) {
-    Ratios_TTM <- Ratios_TTM %>% select(-symbol)
-  } else if ("symbol" %in% colnames(Ratios_TTM)) {
+  
+  if ("symbol" %in% colnames(Ratios_TTM)) {
     Ratios_TTM <- Ratios_TTM %>% rename(Ticker = symbol)
   }
-  if (all(c("symbol", "Ticker") %in% colnames(Ratios))) {
-    Ratios <- Ratios %>% select(-symbol)
-  } else if ("symbol" %in% colnames(Ratios)) {
-    Ratios <- Ratios %>% rename(Ticker = symbol)
-  }
+  
   if ("symbol" %in% colnames(Ratios)) {
     Ratios <- Ratios %>% rename(Ticker = symbol)
   }
-  if (all(c("symbol", "Ticker") %in% colnames(Shares_Float))) {
-    Shares_Float <- Shares_Float %>% select(-symbol)
-  } else if ("symbol" %in% colnames(Shares_Float)) {
+  
+  if ("symbol" %in% colnames(Shares_Float)) {
     Shares_Float <- Shares_Float %>% rename(Ticker = symbol)
   }
-  if (all(c("symbol", "Ticker") %in% colnames(EV))) {
-    EV <- EV %>% select(-symbol)
-  } else if ("symbol" %in% colnames(EV)) {
+  
+  if ("symbol" %in% colnames(EV)) {
     EV <- EV %>% rename(Ticker = symbol)
   }
-  
-  EV <- EV %>%  rename(marketCap = marketCapitalization)
   
   FinancialsMetricsProfile <- list(
     IncomeStatement = IS,
@@ -687,3 +686,52 @@ get_quote_data_df <- function(Stock_List_data, API_Key){
     )
 }
 
+# 04 - Get FX data  -----------------------------
+API_FX_rate <- function(API_Key) {
+  
+  # Base URLs
+  FX_list_url_path_base <- 'https://financialmodelingprep.com/stable/forex-list?apikey='
+  FX_base <- 'https://financialmodelingprep.com/stable/quote-short?symbol='
+  
+  # Retrieve List of currencies & FX symbols
+  FX_list_url <- paste0(FX_list_url_path_base,API_Key)
+  FX_list_df <- fromJSON(FX_list_url)
+  
+  # USD Converted Currencies
+  FX_list_df_USD <- FX_list_df %>% filter(toCurrency =="USD")
+  total_cur <- length(FX_list_df_USD$symbol)
+  
+  
+  # Fetch FX rates
+  fx_rates <- list()
+  for (i in seq_along(FX_list_df_USD$symbol)) {
+    cur <- FX_list_df_USD$symbol[i]
+    cat("Processing FX", cur, "-", round(i / total_cur * 100, 1), "% complete\n")
+    fx_url <- paste0(FX_base, cur,'&apikey=', API_Key)
+    
+    tryCatch({
+      fx_data <- fromJSON(fx_url)
+      if (length(fx_data) > 0) {
+        fx_rates[[cur]] <- as.numeric(fx_data$price)
+      } else {
+        fx_rates[[cur]] <- NA
+      }
+    }, error = function(e) {
+      message(paste("Error fetching FX for", cur, ":", e$message))
+      fx_rates[[cur]] <- NA
+    })
+    
+  }
+  
+  # Create FX_rates dataframe
+  fx_rates_df <- tibble(
+    fx_symbol = names(fx_rates),
+    value = unlist(fx_rates)
+  )
+  
+  # Add 1.0 for USD
+  fx_rates_df <- fx_rates_df %>% 
+    add_row(fx_symbol = "USDUSD", value = 1.0)
+  
+  return(fx_rates_df)
+}
