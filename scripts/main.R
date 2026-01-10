@@ -17,7 +17,7 @@ FX_rates_USD_df <- API_FX_rate(API_Key)
 MF_df <- get_MF_data_df(mktCap_limit_lower = 1000, mktCap_limit_upper = 20000, mktCap_step_M = 100)
 
 # 04 - Select manually stocks -------------------------------------------
-Stock_List_data <- Stock_List_data %>% filter(Ticker %in% c("GIII","PVH","GIL", "GAP"))
+Stock_List_data <- Stock_List_data %>% filter(Ticker %in% c("CALM"))
 Stock_List_data <- API_Profile(Stock_List_data, API_Key)
 
 # 04.1 - OPTION Read the tickers from Excel (sheet "Full_Equity", column H4:H28) ----
@@ -42,7 +42,7 @@ period = "quarter"
 fundamentals_df_original <- get_fundamentals_data_df(Stock_List_data, period, period_limit, 
                                                      API_Key = API_Key)
 
-fundamentals_df <- reduce_financialsMetricsProfile(fundamentals_df_original)
+fundamentals_df <- reduce_financialsMetricsProfile(fundamentals_df_original, FX_rates_USD_df)
 
 fundamentals_df <- ttm_fundamentals(fundamentals_df, 
                                     fundamentals = c("revenue",
@@ -114,5 +114,5 @@ ratio_analysis_plot$debt_coverage_plot
 # 09 - Capex Equity growth ----------------------------------------------------------
 capex_equity_growth_plot(fundamentals_df)
 
-seasonality(fundamentals_df <- fundamentals_df %>% filter(Ticker=="GIII"))
+seasonality(fundamentals_df)
 

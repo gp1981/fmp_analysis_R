@@ -147,7 +147,7 @@ extract_specific_variables <- function(df_list, variables) {
 }
 
 # Reduce the list "FinancialsMetricsProfile" and remove columns with suffixes ".1", ".2", ".x", ".y" that are duplicates or wrong matches
-reduce_financialsMetricsProfile <- function(FinancialsMetricsProfile) {
+reduce_financialsMetricsProfile <- function(FinancialsMetricsProfile, FX_rates_USD_df) {
   
   # Helper function
   clean_joins <- function(df) {
